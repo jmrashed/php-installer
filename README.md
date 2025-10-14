@@ -45,6 +45,27 @@ wget https://github.com/jmrashed/php-installer/archive/main.zip
 
 ## 🛠️ Configuration
 
+# Screenshot
+![Welcome](src/Assets/images/1.png)
+
+![License](src/Assets/images/2.png)
+
+![System Check](src/Assets/images/3.png)
+
+![DB Config](src/Assets/images/4.png)
+
+![DB Import](src/Assets/images/5.png)
+
+![App Config](src/Assets/images/6.png)
+
+![Admin Account](src/Assets/images/7.png)
+
+![Finish](src/Assets/images/8.png)
+
+![Success](src/Assets/images/9.png)
+ 
+
+
 ### Basic Setup
 
 Edit `config/installer.php`:
