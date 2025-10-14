@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] - 2024-12-19
+## [1.2.0] - 2025-10-14
 
 ### Added
 - **Multi-Database Support**: Added support for MySQL, PostgreSQL, and SQLite databases
@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Backward compatibility with single SQL file import
 - Migration path configuration and automatic detection
 
-## [1.1.0] - 2024-12-19
+## [1.1.0] - 2025-10-12
 
 ### Added
 - File upload support for SQL and ZIP files in database import step
@@ -64,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - More robust file upload validation
 - Better error messages with specific database names
 
-## [1.0.0] - 2024-12-19
+## [1.0.0] - 2025-10-10
 
 ### Added
 - Initial release of PHP Installer Package
