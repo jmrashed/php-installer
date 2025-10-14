@@ -15,8 +15,25 @@
 
         <div class="mb-4">
             <h5>Import Options</h5>
+            <?php 
+            $config = include \Installer\Core\Utils::getBasePath('config/installer.php');
+            $migrationSupport = $config['migration_support'] ?? false;
+            $migrationPath = $config['migration_path'] ?? \Installer\Core\Utils::getBasePath('database/migrations');
+            $hasMigrations = $migrationSupport && is_dir($migrationPath) && count(glob($migrationPath . '/*.sql')) > 0;
+            ?>
+            
+            <?php if ($hasMigrations): ?>
             <div class="form-check mb-3">
-                <input class="form-check-input" type="radio" name="import_type" id="useDefault" value="default" checked>
+                <input class="form-check-input" type="radio" name="import_type" id="useMigrations" value="migrations" checked>
+                <label class="form-check-label" for="useMigrations">
+                    <strong>Run database migrations</strong>
+                    <small class="d-block text-muted">Recommended for modern applications</small>
+                </label>
+            </div>
+            <?php endif; ?>
+            
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="radio" name="import_type" id="useDefault" value="default" <?= !$hasMigrations ? 'checked' : '' ?>>
                 <label class="form-check-label" for="useDefault">
                     Use default database schema
                 </label>
@@ -46,6 +63,7 @@
         
         <script>
             document.addEventListener('DOMContentLoaded', function() {
+                const migrationsRadio = document.getElementById('useMigrations');
                 const defaultRadio = document.getElementById('useDefault');
                 const uploadRadio = document.getElementById('uploadFile');
                 const uploadSection = document.getElementById('uploadSection');
@@ -54,6 +72,9 @@
                     uploadSection.style.display = uploadRadio.checked ? 'block' : 'none';
                 }
                 
+                if (migrationsRadio) {
+                    migrationsRadio.addEventListener('change', toggleUploadSection);
+                }
                 defaultRadio.addEventListener('change', toggleUploadSection);
                 uploadRadio.addEventListener('change', toggleUploadSection);
             });

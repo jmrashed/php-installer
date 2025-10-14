@@ -40,6 +40,9 @@ class StepController
                 break;
             case 'db_config':
                 // Pre-fill with session data if available
+                $config = include Utils::getBasePath('config/installer.php');
+                $data['supported_databases'] = $config['supported_databases'] ?? [];
+                $data['db_driver'] = $_SESSION['db_driver'] ?? 'mysql';
                 $data['db_host'] = $_SESSION['db_host'] ?? 'localhost';
                 $data['db_port'] = $_SESSION['db_port'] ?? '3306';
                 $data['db_name'] = $_SESSION['db_name'] ?? '';
@@ -112,25 +115,36 @@ class StepController
                 $this->installer->setNextStep();
                 break;
             case 'db_config':
+                $dbDriver = Utils::sanitizeInput($_POST['db_driver'] ?? 'mysql');
                 $dbHost = Utils::sanitizeInput($_POST['db_host'] ?? '');
                 $dbPort = Utils::sanitizeInput($_POST['db_port'] ?? '');
                 $dbName = Utils::sanitizeInput($_POST['db_name'] ?? '');
                 $dbUsername = Utils::sanitizeInput($_POST['db_username'] ?? '');
                 $dbPassword = $_POST['db_password'] ?? ''; // Don't sanitize password
 
-                if (empty($dbHost) || empty($dbPort) || empty($dbName) || empty($dbUsername)) {
-                    Utils::setAlert('danger', 'All database fields are required.');
-                    $this->showStep();
-                    return;
+                // Validate required fields based on driver
+                if ($dbDriver === 'sqlite') {
+                    if (empty($dbName)) {
+                        Utils::setAlert('danger', 'Database file path is required for SQLite.');
+                        $this->showStep();
+                        return;
+                    }
+                } else {
+                    if (empty($dbHost) || empty($dbPort) || empty($dbName) || empty($dbUsername)) {
+                        Utils::setAlert('danger', 'All database fields are required.');
+                        $this->showStep();
+                        return;
+                    }
                 }
 
+                $_SESSION['db_driver'] = $dbDriver;
                 $_SESSION['db_host'] = $dbHost;
                 $_SESSION['db_port'] = $dbPort;
                 $_SESSION['db_name'] = $dbName;
                 $_SESSION['db_username'] = $dbUsername;
                 $_SESSION['db_password'] = $dbPassword;
 
-                $dbManager = new DatabaseManager($dbHost, $dbPort, $dbName, $dbUsername, $dbPassword);
+                $dbManager = new DatabaseManager($dbHost, $dbPort, $dbName, $dbUsername, $dbPassword, $dbDriver);
                 if (!$dbManager->testConnection()) {
                     foreach ($dbManager->getErrors() as $error) {
                         Utils::setAlert('danger', $error);
@@ -155,59 +169,84 @@ class StepController
                 $dbName = $_SESSION['db_name'] ?? '';
                 $dbUsername = $_SESSION['db_username'] ?? '';
                 $dbPassword = $_SESSION['db_password'] ?? '';
+                $dbDriver = $_SESSION['db_driver'] ?? 'mysql';
 
-                if (empty($dbHost) || empty($dbName) || empty($dbUsername)) {
-                    Utils::setAlert('danger', 'Database connection information is missing. Please go back to database configuration.');
-                    $this->showStep();
-                    return;
-                }
-
-                $dbManager = new DatabaseManager($dbHost, $dbPort, $dbName, $dbUsername, $dbPassword);
-                
-                $importType = $_POST['import_type'] ?? 'default';
-                $sqlFilePath = getcwd() . '/db.sql';
-                
-                if ($importType === 'upload') {
-                    if (!isset($_FILES['sql_file']) || $_FILES['sql_file']['error'] !== UPLOAD_ERR_OK) {
-                        Utils::setAlert('danger', 'Please select a valid file to upload.');
-                        $this->showStep();
-                        return;
-                    }
-                    
-                    $uploadedFile = $_FILES['sql_file']['tmp_name'];
-                    $fileName = $_FILES['sql_file']['name'];
-                    $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-                    
-                    if ($fileExt === 'zip') {
-                        $sqlFilePath = $this->extractZipFile($uploadedFile, $fileName);
-                        if (!$sqlFilePath) {
-                            $this->showStep();
-                            return;
-                        }
-                    } elseif ($fileExt === 'sql') {
-                        $sqlFilePath = $uploadedFile;
-                    } else {
-                        Utils::setAlert('danger', 'Please upload a valid .sql or .zip file.');
+                // Validate required fields based on driver
+                if ($dbDriver === 'sqlite') {
+                    if (empty($dbName)) {
+                        Utils::setAlert('danger', 'Database file path is missing. Please go back to database configuration.');
                         $this->showStep();
                         return;
                     }
                 } else {
-                    // Check if default SQL file exists
-                    if (!file_exists($sqlFilePath)) {
-                        Utils::setAlert('danger', 'Default database schema file not found. Please upload a custom SQL file.');
+                    if (empty($dbHost) || empty($dbName) || empty($dbUsername)) {
+                        Utils::setAlert('danger', 'Database connection information is missing. Please go back to database configuration.');
                         $this->showStep();
                         return;
                     }
                 }
 
-                if (!$dbManager->importSqlFile($sqlFilePath)) {
-                    foreach ($dbManager->getErrors() as $error) {
-                        Utils::setAlert('danger', $error);
+                $dbManager = new DatabaseManager($dbHost, $dbPort, $dbName, $dbUsername, $dbPassword, $dbDriver);
+                
+                $importType = $_POST['import_type'] ?? 'default';
+                $config = include Utils::getBasePath('config/installer.php');
+                
+                if ($importType === 'migrations' && !empty($config['migration_support'])) {
+                    $migrationPath = $config['migration_path'] ?? Utils::getBasePath('database/migrations');
+                    if (!$dbManager->runMigrations($migrationPath)) {
+                        foreach ($dbManager->getErrors() as $error) {
+                            Utils::setAlert('danger', $error);
+                        }
+                        $this->showStep();
+                        return;
                     }
-                    $this->showStep();
-                    return;
+                    Utils::setAlert('success', 'Database migrations completed successfully!');
+                } else {
+                    $sqlFilePath = $config['database_file'] ?? Utils::getBasePath('database/db.sql');
+                    
+                    if ($importType === 'upload') {
+                        if (!isset($_FILES['sql_file']) || $_FILES['sql_file']['error'] !== UPLOAD_ERR_OK) {
+                            Utils::setAlert('danger', 'Please select a valid file to upload.');
+                            $this->showStep();
+                            return;
+                        }
+                        
+                        $uploadedFile = $_FILES['sql_file']['tmp_name'];
+                        $fileName = $_FILES['sql_file']['name'];
+                        $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+                        
+                        if ($fileExt === 'zip') {
+                            $sqlFilePath = $this->extractZipFile($uploadedFile, $fileName);
+                            if (!$sqlFilePath) {
+                                $this->showStep();
+                                return;
+                            }
+                        } elseif ($fileExt === 'sql') {
+                            $sqlFilePath = $uploadedFile;
+                        } else {
+                            Utils::setAlert('danger', 'Please upload a valid .sql or .zip file.');
+                            $this->showStep();
+                            return;
+                        }
+                    } else {
+                        // Check if default SQL file exists
+                        if (!file_exists($sqlFilePath)) {
+                            Utils::setAlert('danger', 'Default database schema file not found. Please upload a custom SQL file or use migrations.');
+                            $this->showStep();
+                            return;
+                        }
+                    }
+
+                    if (!$dbManager->importSqlFile($sqlFilePath)) {
+                        foreach ($dbManager->getErrors() as $error) {
+                            Utils::setAlert('danger', $error);
+                        }
+                        $this->showStep();
+                        return;
+                    }
+                    Utils::setAlert('success', "Database '{$dbName}' imported successfully!");
                 }
-                Utils::setAlert('success', "Database '{$dbName}' imported successfully!");
+                
                 $this->installer->setNextStep();
                 break;
             case 'app_config':
@@ -294,7 +333,25 @@ class StepController
                 $dbPassword = $_SESSION['db_password'] ?? '';
 
                 try {
-                    $pdo = new \PDO("mysql:host={$dbHost};port={$dbPort};dbname={$dbName}", $dbUsername, $dbPassword);
+                    $dbDriver = $_SESSION['db_driver'] ?? 'mysql';
+                    $dbManager = new DatabaseManager($dbHost, $dbPort, $dbName, $dbUsername, $dbPassword, $dbDriver);
+                    
+                    // Build DSN based on driver
+                    switch ($dbDriver) {
+                        case 'mysql':
+                            $dsn = "mysql:host={$dbHost};port={$dbPort};dbname={$dbName}";
+                            break;
+                        case 'pgsql':
+                            $dsn = "pgsql:host={$dbHost};port={$dbPort};dbname={$dbName}";
+                            break;
+                        case 'sqlite':
+                            $dsn = "sqlite:{$dbName}";
+                            break;
+                        default:
+                            throw new \InvalidArgumentException("Unsupported database driver: {$dbDriver}");
+                    }
+                    
+                    $pdo = new \PDO($dsn, $dbUsername, $dbPassword);
                     $adminCreator = new AdminCreator($pdo);
                     if (!$adminCreator->createAdminUser($adminUsername, $adminEmail, $adminPassword)) {
                         foreach ($adminCreator->getErrors() as $error) {

@@ -23,6 +23,10 @@ class SystemChecker
             'message' => ''
         ];
 
+        // Load configuration to get supported databases
+        $config = include Utils::getBasePath('config/installer.php');
+        $supportedDatabases = $config['supported_databases'] ?? [];
+        
         // Define required PHP extensions
         $this->requirements['extensions'] = [
             'pdo' => [
@@ -51,6 +55,18 @@ class SystemChecker
                 'message' => ''
             ]
         ];
+        
+        // Add database-specific extensions
+        foreach ($supportedDatabases as $driver => $dbConfig) {
+            if (isset($dbConfig['extension'])) {
+                $this->requirements['extensions'][$dbConfig['extension']] = [
+                    'name' => $dbConfig['name'] . ' PDO Driver',
+                    'status' => false,
+                    'message' => '',
+                    'optional' => true // Mark as optional since user can choose different DB
+                ];
+            }
+        }
 
         // Define writable directories
         $this->requirements['writable_directories'] = [
@@ -113,8 +129,13 @@ class SystemChecker
                 $ext['message'] = 'Installed';
             } else {
                 $ext['status'] = false;
-                $ext['message'] = "Required extension '{$ext['name']}' is not installed.";
-                $this->errors[] = $ext['message'];
+                $isOptional = isset($ext['optional']) && $ext['optional'];
+                $ext['message'] = ($isOptional ? "Optional extension" : "Required extension") . " '{$ext['name']}' is not installed.";
+                
+                // Only add to errors if it's not optional
+                if (!$isOptional) {
+                    $this->errors[] = $ext['message'];
+                }
             }
         }
     }

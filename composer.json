@@ -1,6 +1,7 @@
 {
   "name": "jmrashed/php-installer",
-  "description": "Reusable, framework-agnostic web installer for PHP applications — step-by-step installation wizard for DB setup, config generation and admin creation.",
+  "version": "1.2.0",
+  "description": "Reusable, framework-agnostic web installer for PHP applications — step-by-step installation wizard with multi-database support, migrations, and admin creation.",
   "type": "library",
   "keywords": [
     "installer",
@@ -26,9 +27,14 @@
   "require": {
     "php": ">=8.1",
     "ext-pdo": "*",
-    "ext-pdo_mysql": "*",
     "ext-mbstring": "*",
     "ext-curl": "*"
+  },
+  "suggest": {
+    "ext-pdo_mysql": "For MySQL database support",
+    "ext-pdo_pgsql": "For PostgreSQL database support",
+    "ext-pdo_sqlite": "For SQLite database support",
+    "ext-zip": "For ZIP file extraction during database import"
   },
   "autoload": {
     "psr-4": {

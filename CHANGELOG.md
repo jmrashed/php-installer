@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2024-12-19
+
+### Added
+- **Multi-Database Support**: Added support for MySQL, PostgreSQL, and SQLite databases
+- **Database Migration System**: Implemented migration-based database setup with ordered execution
+- **Dynamic Database Configuration**: Database type selection with driver-specific field validation
+- **Migration Directory Structure**: Created `database/migrations/` with sample migration files
+- **Enhanced System Checker**: Database-specific PDO extension validation
+- **Migration Documentation**: Comprehensive README for migration usage and conventions
+
+### Enhanced
+- **DatabaseManager**: Multi-driver support with driver-specific DSN building and table operations
+- **StepController**: Enhanced database import with migration support and multi-driver compatibility
+- **Database Configuration UI**: Dynamic form fields that adapt based on selected database type
+- **Database Import UI**: Added migration option with automatic detection of available migrations
+- **Configuration File**: Better documentation and multi-database configuration structure
+
+### Technical Improvements
+- Driver-specific SQL syntax for table operations (MySQL, PostgreSQL, SQLite)
+- Enhanced error handling for different database types
+- Automatic port assignment based on database type selection
+- Optional extension checking for database drivers
+- Migration file naming convention and execution order
+
+### Migration Features
+- Alphabetical migration execution (001, 002, 003, etc.)
+- Support for incremental database updates
+- Backward compatibility with single SQL file import
+- Migration path configuration and automatic detection
+
 ## [1.1.0] - 2024-12-19
 
 ### Added

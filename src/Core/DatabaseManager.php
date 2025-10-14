@@ -12,31 +12,34 @@ class DatabaseManager
     private $database;
     private $username;
     private $password;
+    private $driver;
     private $pdo;
     private $errors = [];
 
-    public function __construct($host = null, $port = null, $database = null, $username = null, $password = null)
+    public function __construct($host = null, $port = null, $database = null, $username = null, $password = null, $driver = 'mysql')
     {
         $this->host = $host;
         $this->port = $port;
         $this->database = $database;
         $this->username = $username;
         $this->password = $password;
+        $this->driver = $driver;
     }
 
-    public function setCredentials($host, $port, $database, $username, $password)
+    public function setCredentials($host, $port, $database, $username, $password, $driver = 'mysql')
     {
         $this->host = $host;
         $this->port = $port;
         $this->database = $database;
         $this->username = $username;
         $this->password = $password;
+        $this->driver = $driver;
     }
 
     public function testConnection()
     {
         try {
-            $dsn = "mysql:host={$this->host};port={$this->port}";
+            $dsn = $this->buildDsn(false);
             $this->pdo = new PDO($dsn, $this->username, $this->password);
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             return true;
@@ -48,19 +51,48 @@ class DatabaseManager
 
     public function createDatabase()
     {
+        if ($this->driver === 'sqlite') {
+            // SQLite database is a file, created on connection if not exists.
+            // We can try to touch the file to ensure the directory is writable.
+            try {
+                if (!file_exists($this->database)) {
+                    touch($this->database);
+                }
+                return true;
+            } catch (\Exception $e) {
+                $this->errors[] = "Failed to create SQLite database file: " . $e->getMessage();
+                return false;
+            }
+        }
+
         if (!$this->pdo) {
-            $this->errors[] = "No active PDO connection. Call testConnection() first.";
-            return false;
+            if (!$this->testConnection()) {
+                 $this->errors[] = "No active PDO connection. Call testConnection() first.";
+                return false;
+            }
         }
 
         try {
-            $this->pdo->exec("CREATE DATABASE IF NOT EXISTS `{$this->database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+            // Check if database exists
+            $query = $this->getCheckDatabaseExistsSql();
+            $stmt = $this->pdo->query($query);
+            if ($stmt->fetchColumn() > 0) {
+                return true; // Database already exists
+            }
+
+            $sql = $this->getCreateDatabaseSql();
+            $this->pdo->exec($sql);
             return true;
         } catch (PDOException $e) {
+            // Ignore "database already exists" errors for pgsql
+            if ($this->driver === 'pgsql' && strpos($e->getMessage(), 'already exists') !== false) {
+                return true;
+            }
             $this->errors[] = "Failed to create database '{$this->database}': " . $e->getMessage();
             return false;
         }
     }
+
 
     public function importSqlFile($sqlFilePath)
     {
@@ -82,7 +114,7 @@ class DatabaseManager
 
         $this->log("Connecting to database: {$this->database}");
         try {
-            $dsn = "mysql:host={$this->host};port={$this->port};dbname={$this->database}";
+            $dsn = $this->buildDsn(true);
             $this->pdo = new PDO($dsn, $this->username, $this->password);
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->log("Database connection successful");
@@ -142,24 +174,55 @@ class DatabaseManager
     private function dropAllTables()
     {
         try {
-            $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
-            $this->log("Foreign key checks disabled");
-            
-            $result = $this->pdo->query("SHOW TABLES");
             $tables = [];
-            while ($row = $result->fetch(PDO::FETCH_NUM)) {
-                $tables[] = $row[0];
+            
+            switch ($this->driver) {
+                case 'mysql':
+                    $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
+                    $this->log("Foreign key checks disabled (MySQL)");
+                    
+                    $result = $this->pdo->query("SHOW TABLES");
+                    while ($row = $result->fetch(PDO::FETCH_NUM)) {
+                        $tables[] = $row[0];
+                    }
+                    break;
+                    
+                case 'pgsql':
+                    $result = $this->pdo->query("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
+                    while ($row = $result->fetch(PDO::FETCH_NUM)) {
+                        $tables[] = $row[0];
+                    }
+                    break;
+                    
+                case 'sqlite':
+                    $result = $this->pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+                    while ($row = $result->fetch(PDO::FETCH_NUM)) {
+                        $tables[] = $row[0];
+                    }
+                    break;
             }
             
             $this->log("Found " . count($tables) . " existing tables to drop");
             
             foreach ($tables as $table) {
-                $this->pdo->exec("DROP TABLE IF EXISTS `{$table}`");
+                switch ($this->driver) {
+                    case 'mysql':
+                        $this->pdo->exec("DROP TABLE IF EXISTS `{$table}`");
+                        break;
+                    case 'pgsql':
+                        $this->pdo->exec("DROP TABLE IF EXISTS \"{$table}\" CASCADE");
+                        break;
+                    case 'sqlite':
+                        $this->pdo->exec("DROP TABLE IF EXISTS `{$table}`");
+                        break;
+                }
                 $this->log("Dropped table: {$table}");
             }
             
-            $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
-            $this->log("Foreign key checks re-enabled");
+            if ($this->driver === 'mysql') {
+                $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
+                $this->log("Foreign key checks re-enabled (MySQL)");
+            }
         } catch (PDOException $e) {
             $this->log("Warning during table drop: " . $e->getMessage());
         }
@@ -225,6 +288,63 @@ class DatabaseManager
         // Also try to write to simple log file
         $simpleLog = getcwd() . '/storage/logs/db_import.log';
         @file_put_contents($simpleLog, date('Y-m-d H:i:s') . ' - ' . $message . PHP_EOL, FILE_APPEND);
+    }
+
+    private function buildDsn($includeDatabase = false)
+    {
+        switch ($this->driver) {
+            case 'mysql':
+                $dsn = "mysql:host={$this->host};port={$this->port}";
+                if ($includeDatabase) {
+                    $dsn .= ";dbname={$this->database}";
+                }
+                return $dsn;
+            case 'pgsql':
+                $dsn = "pgsql:host={$this->host};port={$this->port}";
+                if ($includeDatabase) {
+                    $dsn .= ";dbname={$this->database}";
+                }
+                return $dsn;
+            case 'sqlite':
+                return "sqlite:{$this->database}";
+            default:
+                throw new \InvalidArgumentException("Unsupported database driver: {$this->driver}");
+        }
+    }
+
+    private function getCreateDatabaseSql()
+    {
+        switch ($this->driver) {
+            case 'mysql':
+                return "CREATE DATABASE IF NOT EXISTS `{$this->database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;";
+            case 'pgsql':
+                return "CREATE DATABASE \"{$this->database}\" WITH ENCODING 'UTF8';";
+            default:
+                throw new \InvalidArgumentException("Database creation not supported for driver: {$this->driver}");
+        }
+    }
+
+    public function runMigrations($migrationPath)
+    {
+        if (!is_dir($migrationPath)) {
+            $this->errors[] = "Migration directory not found: {$migrationPath}";
+            return false;
+        }
+
+        $this->log("Running migrations from: {$migrationPath}");
+        
+        $migrations = glob($migrationPath . '/*.sql');
+        sort($migrations);
+        
+        foreach ($migrations as $migration) {
+            $this->log("Running migration: " . basename($migration));
+            if (!$this->importSqlFile($migration)) {
+                return false;
+            }
+        }
+        
+        $this->log("All migrations completed successfully");
+        return true;
     }
 
     public function getErrors()
