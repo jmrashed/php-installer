@@ -1,0 +1,8 @@
+/vendor/
+.env
+.env.local
+.env.*.local
+.DS_Store
+/storage/logs/
+/storage/tmp/
+composer.lock

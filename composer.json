@@ -1,0 +1,52 @@
+{
+  "name": "jmrashed/php-installer",
+  "description": "Reusable, framework-agnostic web installer for PHP applications — step-by-step installation wizard for DB setup, config generation and admin creation.",
+  "type": "library",
+  "keywords": [
+    "installer",
+    "php",
+    "web-installer",
+    "deployment",
+    "installer-wizard"
+  ],
+  "homepage": "https://github.com/jmrashed/php-installer",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Md Rasheduzzaman",
+      "email": "jmrashed@gmail.com",
+      "homepage": "https://github.com/jmrashed"
+    }
+  ],
+  "support": {
+    "email": "jmrashed@gmail.com",
+    "issues": "https://github.com/jmrashed/php-installer/issues",
+    "source": "https://github.com/jmrashed/php-installer"
+  },
+  "require": {
+    "php": ">=8.1",
+    "ext-pdo": "*",
+    "ext-pdo_mysql": "*",
+    "ext-mbstring": "*",
+    "ext-curl": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Installer\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Installer\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "validate": "composer validate --no-check-publish"
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
