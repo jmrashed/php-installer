@@ -21,6 +21,7 @@ class StepController
     public function showStep()
     {
         $step = $this->installer->getCurrentStep();
+        $this->debug('Showing step: ' . $step);
         $data = [];
 
         // Handle step-specific logic and data loading
@@ -71,6 +72,7 @@ class StepController
     public function postStep()
     {
         $step = $this->installer->getCurrentStep();
+        $this->debug('Processing POST for step: ' . $step);
         $errors = [];
 
         if (!Utils::verifyCsrfToken($_POST['csrf_token'] ?? '')) {
@@ -87,8 +89,15 @@ class StepController
 
         switch ($step) {
             case 'welcome':
-            case 'license':
                 // No specific POST data to process, just move to next step
+                $this->installer->setNextStep();
+                break;
+            case 'license':
+                if (empty($_POST['agree_license'])) {
+                    Utils::setAlert('danger', 'You must agree to the license terms to continue.');
+                    $this->showStep();
+                    return;
+                }
                 $this->installer->setNextStep();
                 break;
             case 'system_check':
@@ -147,8 +156,49 @@ class StepController
                 $dbUsername = $_SESSION['db_username'] ?? '';
                 $dbPassword = $_SESSION['db_password'] ?? '';
 
+                if (empty($dbHost) || empty($dbName) || empty($dbUsername)) {
+                    Utils::setAlert('danger', 'Database connection information is missing. Please go back to database configuration.');
+                    $this->showStep();
+                    return;
+                }
+
                 $dbManager = new DatabaseManager($dbHost, $dbPort, $dbName, $dbUsername, $dbPassword);
-                $sqlFilePath = Utils::getBasePath('database/db.sql');
+                
+                $importType = $_POST['import_type'] ?? 'default';
+                $sqlFilePath = getcwd() . '/db.sql';
+                
+                if ($importType === 'upload') {
+                    if (!isset($_FILES['sql_file']) || $_FILES['sql_file']['error'] !== UPLOAD_ERR_OK) {
+                        Utils::setAlert('danger', 'Please select a valid file to upload.');
+                        $this->showStep();
+                        return;
+                    }
+                    
+                    $uploadedFile = $_FILES['sql_file']['tmp_name'];
+                    $fileName = $_FILES['sql_file']['name'];
+                    $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+                    
+                    if ($fileExt === 'zip') {
+                        $sqlFilePath = $this->extractZipFile($uploadedFile, $fileName);
+                        if (!$sqlFilePath) {
+                            $this->showStep();
+                            return;
+                        }
+                    } elseif ($fileExt === 'sql') {
+                        $sqlFilePath = $uploadedFile;
+                    } else {
+                        Utils::setAlert('danger', 'Please upload a valid .sql or .zip file.');
+                        $this->showStep();
+                        return;
+                    }
+                } else {
+                    // Check if default SQL file exists
+                    if (!file_exists($sqlFilePath)) {
+                        Utils::setAlert('danger', 'Default database schema file not found. Please upload a custom SQL file.');
+                        $this->showStep();
+                        return;
+                    }
+                }
 
                 if (!$dbManager->importSqlFile($sqlFilePath)) {
                     foreach ($dbManager->getErrors() as $error) {
@@ -157,7 +207,7 @@ class StepController
                     $this->showStep();
                     return;
                 }
-                Utils::setAlert('success', 'Database imported successfully!');
+                Utils::setAlert('success', "Database '{$dbName}' imported successfully!");
                 $this->installer->setNextStep();
                 break;
             case 'app_config':
@@ -244,7 +294,7 @@ class StepController
                 $dbPassword = $_SESSION['db_password'] ?? '';
 
                 try {
-                    $pdo = new PDO("mysql:host={$dbHost};port={$dbPort};dbname={$dbName}", $dbUsername, $dbPassword);
+                    $pdo = new \PDO("mysql:host={$dbHost};port={$dbPort};dbname={$dbName}", $dbUsername, $dbPassword);
                     $adminCreator = new AdminCreator($pdo);
                     if (!$adminCreator->createAdminUser($adminUsername, $adminEmail, $adminPassword)) {
                         foreach ($adminCreator->getErrors() as $error) {
@@ -255,7 +305,7 @@ class StepController
                     }
                     Utils::setAlert('success', 'Admin account created successfully!');
                     $this->installer->setNextStep();
-                } catch (PDOException $e) {
+                } catch (\PDOException $e) {
                     Utils::setAlert('danger', "Database error: " . $e->getMessage());
                     $this->showStep();
                     return;
@@ -272,17 +322,91 @@ class StepController
                 break;
         }
 
-        Utils::redirect(Utils::getBasePath('index.php?step=' . $this->installer->getCurrentStep()));
+        header('Location: index.php?step=' . $this->installer->getCurrentStep());
+        exit;
     }
 
     private function renderView($step, $data = [])
     {
+        $this->debug('Rendering view for step: ' . $step);
         extract($data); // Extract data to make it available in the view
         $installer = $this->installer; // Make installer object available in views
         $alerts = Utils::getAlerts(); // Get and clear alerts
 
+        $this->debug('Including header.php');
         include Utils::getBasePath('src/Views/layouts/header.php');
+        $this->debug('Including step view: ' . $step . '.php');
         include Utils::getBasePath("src/Views/steps/{$step}.php");
+        $this->debug('Including footer.php');
         include Utils::getBasePath('src/Views/layouts/footer.php');
+    }
+
+    private function extractZipFile($zipPath, $fileName)
+    {
+        if (!class_exists('ZipArchive')) {
+            Utils::setAlert('danger', 'ZIP extension not available. Please upload a .sql file instead.');
+            return false;
+        }
+        
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath) !== TRUE) {
+            Utils::setAlert('danger', 'Failed to open ZIP file: ' . $fileName);
+            return false;
+        }
+        
+        $extractPath = sys_get_temp_dir() . '/installer_' . uniqid();
+        if (!mkdir($extractPath, 0755, true)) {
+            Utils::setAlert('danger', 'Failed to create extraction directory.');
+            $zip->close();
+            return false;
+        }
+        
+        if (!$zip->extractTo($extractPath)) {
+            Utils::setAlert('danger', 'Failed to extract ZIP file.');
+            $zip->close();
+            return false;
+        }
+        
+        $zip->close();
+        
+        // Find first .sql file in extracted contents
+        $sqlFile = $this->findSqlFile($extractPath);
+        if (!$sqlFile) {
+            Utils::setAlert('danger', 'No .sql file found in ZIP archive.');
+            $this->cleanupDirectory($extractPath);
+            return false;
+        }
+        
+        return $sqlFile;
+    }
+    
+    private function findSqlFile($directory)
+    {
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory));
+        foreach ($iterator as $file) {
+            if ($file->isFile() && strtolower($file->getExtension()) === 'sql') {
+                return $file->getPathname();
+            }
+        }
+        return false;
+    }
+    
+    private function cleanupDirectory($directory)
+    {
+        if (is_dir($directory)) {
+            $files = array_diff(scandir($directory), ['.', '..']);
+            foreach ($files as $file) {
+                $path = $directory . '/' . $file;
+                is_dir($path) ? $this->cleanupDirectory($path) : unlink($path);
+            }
+            rmdir($directory);
+        }
+    }
+
+    private function debug($message)
+    {
+        if (isset($_GET['debug']) || defined('INSTALLER_DEBUG')) {
+            echo "<div style='background:#f0f0f0;padding:5px;margin:2px;border-left:3px solid #007cba;font-family:monospace;font-size:12px;'>DEBUG: {$message}</div>";
+        }
     }
 }

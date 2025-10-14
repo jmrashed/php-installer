@@ -31,8 +31,12 @@ class Installer
 
     private function getCurrentStepFromSession()
     {
-        // In a real application, this would read from a session or a temporary file
-        // For now, we'll default to the first step
+        // Check URL parameter first, then session, then default
+        if (isset($_GET['step']) && in_array($_GET['step'], $this->steps)) {
+            $this->currentStep = $_GET['step'];
+            $_SESSION['installer_step'] = $this->currentStep;
+            return $this->currentStep;
+        }
         return isset($_SESSION['installer_step']) ? $_SESSION['installer_step'] : 'welcome';
     }
 
@@ -96,6 +100,37 @@ class Installer
     {
         if (file_exists(Utils::getLockFile())) {
             unlink(Utils::getLockFile());
+        }
+    }
+
+    public function handle()
+    {
+        session_start();
+        
+        if (!defined('INSTALLER_BASE_PATH')) {
+            define('INSTALLER_BASE_PATH', dirname(__DIR__, 2));
+        }
+
+        $this->debug('Starting installer handle()');
+        $this->debug('Current step: ' . $this->getCurrentStep());
+        $this->debug('Request method: ' . $_SERVER['REQUEST_METHOD']);
+        $this->debug('Base path: ' . INSTALLER_BASE_PATH);
+
+        $stepController = new \Installer\Controllers\StepController($this);
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->debug('Processing POST request');
+            $stepController->postStep();
+        } else {
+            $this->debug('Processing GET request');
+            $stepController->showStep();
+        }
+    }
+
+    private function debug($message)
+    {
+        if (isset($_GET['debug']) || defined('INSTALLER_DEBUG')) {
+            echo "<div style='background:#f0f0f0;padding:5px;margin:2px;border-left:3px solid #007cba;font-family:monospace;font-size:12px;'>DEBUG: {$message}</div>";
         }
     }
 }

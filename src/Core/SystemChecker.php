@@ -122,6 +122,18 @@ class SystemChecker
     private function checkWritableDirectories()
     {
         foreach ($this->requirements['writable_directories'] as $dirKey => &$dir) {
+            // Create directory if it doesn't exist
+            if (!file_exists($dir['path'])) {
+                if (!is_dir(dirname($dir['path']))) {
+                    mkdir(dirname($dir['path']), 0755, true);
+                }
+                if (strpos($dir['path'], '.env') === false) {
+                    mkdir($dir['path'], 0755, true);
+                } else {
+                    touch($dir['path']);
+                }
+            }
+            
             if (is_writable($dir['path'])) {
                 $dir['status'] = true;
                 $dir['message'] = 'Writable';

@@ -14,11 +14,21 @@ $currentStepIndex = $installer->getStepIndex($currentStep);
             Step <?= $currentStepIndex + 1 ?> of <?= $totalSteps ?>
         </div>
     </div>
-    <ul class="progress-steps list-unstyled d-flex justify-content-between mt-2">
+    <div class="step-indicators mt-3">
         <?php foreach ($steps as $index => $stepName): ?>
-            <li class="step-item <?= $index <= $currentStepIndex ? 'active' : '' ?>">
-                <?= ucfirst(str_replace('_', ' ', $stepName)) ?>
-            </li>
+            <div class="step-indicator <?= $index <= $currentStepIndex ? 'completed' : '' ?> <?= $index == $currentStepIndex ? 'current' : '' ?>">
+                <div class="step-circle">
+                    <?php if ($index < $currentStepIndex): ?>
+                        <i class="check-icon">✓</i>
+                    <?php else: ?>
+                        <?= $index + 1 ?>
+                    <?php endif; ?>
+                </div>
+                <div class="step-label"><?= ucfirst(str_replace('_', ' ', $stepName)) ?></div>
+                <?php if ($index < count($steps) - 1): ?>
+                    <div class="step-connector <?= $index < $currentStepIndex ? 'completed' : '' ?>"></div>
+                <?php endif; ?>
+            </div>
         <?php endforeach; ?>
-    </ul>
+    </div>
 </div>
