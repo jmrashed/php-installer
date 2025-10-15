@@ -30,7 +30,7 @@
         <p class="card-text">This wizard will guide you through the installation process of your PHP application.</p>
         <p class="card-text">Please ensure you have the necessary database credentials and application settings ready.</p>
 
-        <form action="index.php?step=welcome" method="POST">
+        <form action="install?step=welcome" method="POST">
             <input type="hidden" name="csrf_token" value="<?php echo \Installer\Core\Utils::getCsrfToken()?>">
             <div class="d-grid gap-2">
                 <button type="submit" class="btn btn-primary">Start Installation</button>

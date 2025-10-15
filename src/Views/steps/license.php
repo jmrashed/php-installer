@@ -20,7 +20,7 @@
             <p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.</p>
         </div>
 
-        <form action="index.php?step=license" method="POST" class="mt-4">
+        <form action="install?step=license" method="POST" class="mt-4">
             <input type="hidden" name="csrf_token" value="<?= \Installer\Core\Utils::getCsrfToken() ?>">
             <div class="form-check mb-3">
                 <input class="form-check-input" type="checkbox" id="agreeLicense" name="agree_license" required>
@@ -29,7 +29,7 @@
                 </label>
             </div>
             <div class="d-flex justify-content-between">
-                <a href="index.php?step=welcome" class="btn btn-secondary">Previous</a>
+                <a href="install?step=welcome" class="btn btn-secondary">Previous</a>
                 <button type="submit" class="btn btn-primary">Next</button>
             </div>
         </form>

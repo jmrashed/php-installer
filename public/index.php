@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../src/Core/Installer.php';
+require_once __DIR__ . '/../src/autoload.php';
 
 use Installer\Core\Installer;
 

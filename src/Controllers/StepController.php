@@ -8,6 +8,7 @@ use Installer\Core\DatabaseManager;
 use Installer\Core\ConfigWriter;
 use Installer\Core\AdminCreator;
 use Installer\Core\Utils;
+use Installer\Core\Debug;
 
 class StepController
 {
@@ -39,22 +40,44 @@ class StepController
                 $data['errors'] = $systemChecker->getErrors();
                 break;
             case 'db_config':
+                Debug::log("Loading db_config step");
                 // Pre-fill with session data if available
-                $config = include Utils::getBasePath('config/installer.php');
-                $data['supported_databases'] = $config['supported_databases'] ?? [];
+                $configPath = Utils::getBasePath('config/installer.php');
+                Debug::log("Config path: $configPath");
+                
+                if (file_exists($configPath)) {
+                    Debug::log("Config file exists");
+                    $config = include $configPath;
+                    Debug::log("Config loaded: " . print_r($config, true));
+                } else {
+                    Debug::log("Config file not found, using defaults");
+                    $config = [];
+                }
+                
+                $data['supported_databases'] = $config['supported_databases'] ?? [
+                    'mysql' => ['name' => 'MySQL', 'default_port' => '3306'],
+                    'pgsql' => ['name' => 'PostgreSQL', 'default_port' => '5432'],
+                    'sqlite' => ['name' => 'SQLite', 'default_port' => null]
+                ];
                 $data['db_driver'] = $_SESSION['db_driver'] ?? 'mysql';
                 $data['db_host'] = $_SESSION['db_host'] ?? 'localhost';
                 $data['db_port'] = $_SESSION['db_port'] ?? '3306';
                 $data['db_name'] = $_SESSION['db_name'] ?? '';
                 $data['db_username'] = $_SESSION['db_username'] ?? 'root';
                 $data['db_password'] = $_SESSION['db_password'] ?? '';
+                
+                Debug::log("Data prepared for db_config: " . print_r($data, true));
                 break;
             case 'db_import':
                 // No specific data needed, handled by POST
                 break;
             case 'app_config':
-                $data['app_name'] = $_SESSION['app_name'] ?? 'My Application';
-                $data['app_url'] = $_SESSION['app_url'] ?? Utils::getBasePath();
+                $data['app_name'] = $_SESSION['app_name'] ?? 'Flat Management Software';
+                // Generate proper base URL from current request
+                $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                $defaultUrl = $protocol . '://' . $host . '/';
+                $data['app_url'] = $_SESSION['app_url'] ?? $defaultUrl;
                 break;
             case 'admin_account':
                 $data['admin_username'] = $_SESSION['admin_username'] ?? 'admin';
@@ -75,7 +98,8 @@ class StepController
     public function postStep()
     {
         $step = $this->installer->getCurrentStep();
-        $this->debug('Processing POST for step: ' . $step);
+        Debug::log("Processing POST for step: $step");
+        Debug::log("POST data: " . print_r($_POST, true));
         $errors = [];
 
         if (!Utils::verifyCsrfToken($_POST['csrf_token'] ?? '')) {
@@ -115,12 +139,15 @@ class StepController
                 $this->installer->setNextStep();
                 break;
             case 'db_config':
+                Debug::log("Processing db_config POST");
                 $dbDriver = Utils::sanitizeInput($_POST['db_driver'] ?? 'mysql');
                 $dbHost = Utils::sanitizeInput($_POST['db_host'] ?? '');
                 $dbPort = Utils::sanitizeInput($_POST['db_port'] ?? '');
                 $dbName = Utils::sanitizeInput($_POST['db_name'] ?? '');
                 $dbUsername = Utils::sanitizeInput($_POST['db_username'] ?? '');
                 $dbPassword = $_POST['db_password'] ?? ''; // Don't sanitize password
+                
+                Debug::log("DB Config - Driver: $dbDriver, Host: $dbHost, Port: $dbPort, Name: $dbName, User: $dbUsername");
 
                 // Validate required fields based on driver
                 if ($dbDriver === 'sqlite') {
@@ -144,24 +171,41 @@ class StepController
                 $_SESSION['db_username'] = $dbUsername;
                 $_SESSION['db_password'] = $dbPassword;
 
-                $dbManager = new DatabaseManager($dbHost, $dbPort, $dbName, $dbUsername, $dbPassword, $dbDriver);
-                if (!$dbManager->testConnection()) {
-                    foreach ($dbManager->getErrors() as $error) {
-                        Utils::setAlert('danger', $error);
+                Debug::log("Creating DatabaseManager");
+                try {
+                    $dbManager = new DatabaseManager($dbHost, $dbPort, $dbName, $dbUsername, $dbPassword, $dbDriver);
+                    Debug::log("DatabaseManager created, testing connection");
+                    
+                    if (!$dbManager->testConnection()) {
+                        Debug::log("Connection test failed");
+                        foreach ($dbManager->getErrors() as $error) {
+                            Utils::setAlert('danger', $error);
+                        }
+                        $this->showStep();
+                        return;
                     }
+                    Debug::log("Connection test passed");
+                } catch (Exception $e) {
+                    echo "[ERROR] DatabaseManager error: " . $e->getMessage() . "<br>";
+                    Utils::setAlert('danger', 'Database error: ' . $e->getMessage());
                     $this->showStep();
                     return;
                 }
 
+                Debug::log("Creating database");
                 if (!$dbManager->createDatabase()) {
+                    Debug::log("Database creation failed");
                     foreach ($dbManager->getErrors() as $error) {
                         Utils::setAlert('danger', $error);
                     }
                     $this->showStep();
                     return;
                 }
+                Debug::log("Database created successfully");
 
+                Debug::log("Setting next step");
                 $this->installer->setNextStep();
+                echo "[DEBUG] Next step set, current step now: " . $this->installer->getCurrentStep() . "<br>";
                 break;
             case 'db_import':
                 $dbHost = $_SESSION['db_host'] ?? '';
@@ -192,7 +236,10 @@ class StepController
                 $config = include Utils::getBasePath('config/installer.php');
                 
                 if ($importType === 'migrations' && !empty($config['migration_support'])) {
+                    Debug::log("Running migrations");
                     $migrationPath = $config['migration_path'] ?? Utils::getBasePath('database/migrations');
+                    Debug::log("Migration path: $migrationPath");
+                    
                     if (!$dbManager->runMigrations($migrationPath)) {
                         foreach ($dbManager->getErrors() as $error) {
                             Utils::setAlert('danger', $error);
@@ -200,7 +247,21 @@ class StepController
                         $this->showStep();
                         return;
                     }
-                    Utils::setAlert('success', 'Database migrations completed successfully!');
+                    
+                    // Run seeders if available
+                    if (!empty($config['seeder_path']) && is_dir($config['seeder_path'])) {
+                        Debug::log("Running seeders");
+                        if (!$dbManager->runSeeders($config['seeder_path'])) {
+                            foreach ($dbManager->getErrors() as $error) {
+                                Utils::setAlert('danger', $error);
+                            }
+                            $this->showStep();
+                            return;
+                        }
+                        Utils::setAlert('success', 'Database migrations and seeders completed successfully!');
+                    } else {
+                        Utils::setAlert('success', 'Database migrations completed successfully!');
+                    }
                 } else {
                     $sqlFilePath = $config['database_file'] ?? Utils::getBasePath('database/db.sql');
                     
@@ -262,39 +323,40 @@ class StepController
                 $_SESSION['app_name'] = $appName;
                 $_SESSION['app_url'] = $appUrl;
 
-                $configWriter = new ConfigWriter();
-                $envData = [
-                    'APP_NAME' => $appName,
-                    'APP_URL' => $appUrl,
-                    'DB_HOST' => $_SESSION['db_host'],
-                    'DB_PORT' => $_SESSION['db_port'],
-                    'DB_DATABASE' => $_SESSION['db_name'],
-                    'DB_USERNAME' => $_SESSION['db_username'],
-                    'DB_PASSWORD' => $_SESSION['db_password'],
-                    'APP_KEY' => Utils::generateRandomString(32)
-                ];
-
-                if (!$configWriter->writeEnvFile($envData)) {
-                    foreach ($configWriter->getErrors() as $error) {
-                        Utils::setAlert('danger', $error);
-                    }
+                // Create the main application config file
+                $configContent = "<?php\n";
+                $configContent .= "// Database Configuration\n";
+                $configContent .= "define('DB_HOST', '" . $_SESSION['db_host'] . "');\n";
+                $configContent .= "define('DB_NAME', '" . $_SESSION['db_name'] . "');\n";
+                $configContent .= "define('DB_USER', '" . $_SESSION['db_username'] . "');\n";
+                $configContent .= "define('DB_PASS', '" . $_SESSION['db_password'] . "');\n\n";
+                $configContent .= "// Application Configuration\n";
+                $configContent .= "define('SITE_NAME', '" . $appName . "');\n";
+                $configContent .= "define('DEBUG_MODE', false);\n";
+                $configContent .= "define('BASE_URL', '" . $appUrl . "');\n";
+                
+                // Get the correct path to the main application's includes directory
+                $basePath = Utils::getBasePath('');
+                Debug::log("Base path: $basePath");
+                // Go up 3 levels: php-installer -> jmrashed -> vendor -> flat-management-software
+                $mainAppPath = dirname(dirname(dirname($basePath)));
+                Debug::log("Main app path: $mainAppPath");
+                $configPath = $mainAppPath . '/includes/config.php';
+                Debug::log("Writing config to: $configPath");
+                
+                // Check if the includes directory exists
+                $includesDir = dirname($configPath);
+                if (!is_dir($includesDir)) {
+                    Debug::log("Includes directory doesn't exist, creating: $includesDir");
+                    mkdir($includesDir, 0755, true);
+                }
+                
+                if (file_put_contents($configPath, $configContent) === false) {
+                    Utils::setAlert('danger', 'Failed to write application config file.');
                     $this->showStep();
                     return;
                 }
-
-                $configData = [
-                    'APP_NAME' => $appName,
-                    'APP_URL' => $appUrl,
-                    'INSTALLER_LOCK_ENABLED' => 'true'
-                ];
-
-                if (!$configWriter->writeConfigFile($configData)) {
-                    foreach ($configWriter->getErrors() as $error) {
-                        Utils::setAlert('danger', $error);
-                    }
-                    $this->showStep();
-                    return;
-                }
+                Debug::log("Config file written successfully");
 
                 Utils::setAlert('success', 'Application configuration saved!');
                 $this->installer->setNextStep();
@@ -369,17 +431,23 @@ class StepController
                 }
                 break;
             case 'finish':
+                Debug::log("Processing finish step");
                 $this->installer->createLockFile();
+                Debug::log("Lock file created");
                 session_destroy(); // Clear all session data
-                Utils::setAlert('success', 'Installation completed successfully!');
-                $this->installer->setNextStep(); // This will effectively do nothing as it's the last step
+                Debug::log("Session destroyed");
+                Debug::log("Redirecting to main application");
+                header('Location: /');
+                exit;
                 break;
             default:
                 Utils::redirect(Utils::getBasePath());
                 break;
         }
 
-        header('Location: index.php?step=' . $this->installer->getCurrentStep());
+        $nextStep = $this->installer->getCurrentStep();
+        Debug::log("Redirecting to: install?step=$nextStep");
+        header('Location: install?step=' . $nextStep);
         exit;
     }
 

@@ -1,8 +1,8 @@
 <?php
-/**
- * @var \Installer\Core\Installer $installer
- * @var array $alerts
- */
+    /**
+     * @var \Installer\Core\Installer $installer
+     * @var array $alerts
+     */
 ?>
 
 <div class="card mx-auto mt-5" style="max-width: 600px;">
@@ -15,25 +15,25 @@
 
         <div class="mb-4">
             <h5>Import Options</h5>
-            <?php 
-            $config = include \Installer\Core\Utils::getBasePath('config/installer.php');
-            $migrationSupport = $config['migration_support'] ?? false;
-            $migrationPath = $config['migration_path'] ?? \Installer\Core\Utils::getBasePath('database/migrations');
-            $hasMigrations = $migrationSupport && is_dir($migrationPath) && count(glob($migrationPath . '/*.sql')) > 0;
+            <?php
+                $config           = include \Installer\Core\Utils::getBasePath('config/installer.php');
+                $migrationSupport = $config['migration_support'] ?? false;
+                $migrationPath    = $config['migration_path'] ?? \Installer\Core\Utils::getBasePath('database/migrations');
+                $hasMigrations    = $migrationSupport && is_dir($migrationPath) && count(glob($migrationPath . '/*.php')) > 0;
             ?>
-            
+
             <?php if ($hasMigrations): ?>
             <div class="form-check mb-3">
                 <input class="form-check-input" type="radio" name="import_type" id="useMigrations" value="migrations" checked>
                 <label class="form-check-label" for="useMigrations">
-                    <strong>Run database migrations</strong>
-                    <small class="d-block text-muted">Recommended for modern applications</small>
+                    <strong>Run database migrations & seeders</strong>
+                    <small class="d-block text-muted">Uses PHP migrations and seeders (Recommended)</small>
                 </label>
             </div>
             <?php endif; ?>
-            
+
             <div class="form-check mb-3">
-                <input class="form-check-input" type="radio" name="import_type" id="useDefault" value="default" <?= !$hasMigrations ? 'checked' : '' ?>>
+                <input class="form-check-input" type="radio" name="import_type" id="useDefault" value="default" <?php echo ! $hasMigrations ? 'checked' : ''?>>
                 <label class="form-check-label" for="useDefault">
                     Use default database schema
                 </label>
@@ -46,32 +46,32 @@
             </div>
         </div>
 
-        <form action="index.php?step=db_import" method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="csrf_token" value="<?= \Installer\Core\Utils::getCsrfToken() ?>">
-            
+        <form action="install?step=db_import" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="<?php echo \Installer\Core\Utils::getCsrfToken()?>">
+
             <div id="uploadSection" class="mb-3" style="display: none;">
                 <label for="sqlFile" class="form-label">Select SQL File</label>
                 <input type="file" class="form-control" id="sqlFile" name="sql_file" accept=".sql,.zip">
                 <div class="form-text">Upload a .sql file or .zip archive containing SQL files.</div>
             </div>
-            
+
             <div class="d-flex justify-content-between">
-                <a href="index.php?step=db_config" class="btn btn-secondary">Previous</a>
+                <a href="install?step=db_config" class="btn btn-secondary">Previous</a>
                 <button type="submit" class="btn btn-primary">Import Database</button>
             </div>
         </form>
-        
+
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 const migrationsRadio = document.getElementById('useMigrations');
                 const defaultRadio = document.getElementById('useDefault');
                 const uploadRadio = document.getElementById('uploadFile');
                 const uploadSection = document.getElementById('uploadSection');
-                
+
                 function toggleUploadSection() {
                     uploadSection.style.display = uploadRadio.checked ? 'block' : 'none';
                 }
-                
+
                 if (migrationsRadio) {
                     migrationsRadio.addEventListener('change', toggleUploadSection);
                 }

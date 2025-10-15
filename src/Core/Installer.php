@@ -7,6 +7,7 @@ use Installer\Core\DatabaseManager;
 use Installer\Core\ConfigWriter;
 use Installer\Core\AdminCreator;
 use Installer\Core\Utils;
+use Installer\Core\Debug;
 
 class Installer
 {
@@ -111,19 +112,34 @@ class Installer
             define('INSTALLER_BASE_PATH', dirname(__DIR__, 2));
         }
 
-        $this->debug('Starting installer handle()');
-        $this->debug('Current step: ' . $this->getCurrentStep());
-        $this->debug('Request method: ' . $_SERVER['REQUEST_METHOD']);
-        $this->debug('Base path: ' . INSTALLER_BASE_PATH);
+        Debug::log("Starting installer handle()");
+        Debug::log("Current step: " . $this->getCurrentStep());
+        Debug::log("Request method: " . $_SERVER['REQUEST_METHOD']);
+        Debug::log("Base path: " . INSTALLER_BASE_PATH);
+        Debug::log("GET params: " . print_r($_GET, true));
+        Debug::log("Session data: " . print_r($_SESSION, true));
 
-        $stepController = new \Installer\Controllers\StepController($this);
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->debug('Processing POST request');
-            $stepController->postStep();
-        } else {
-            $this->debug('Processing GET request');
-            $stepController->showStep();
+        try {
+            Debug::log("Creating StepController");
+            $stepController = new \Installer\Controllers\StepController($this);
+            Debug::log("StepController created");
+            
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                Debug::log("Processing POST request");
+                $stepController->postStep();
+            } else {
+                Debug::log("Processing GET request");
+                $stepController->showStep();
+            }
+            Debug::log("Step processing completed");
+        } catch (Exception $e) {
+            Debug::log("Exception in handle(): " . $e->getMessage());
+            Debug::log("File: " . $e->getFile());
+            Debug::log("Line: " . $e->getLine());
+        } catch (Error $e) {
+            Debug::log("Fatal error in handle(): " . $e->getMessage());
+            Debug::log("File: " . $e->getFile());
+            Debug::log("Line: " . $e->getLine());
         }
     }
 

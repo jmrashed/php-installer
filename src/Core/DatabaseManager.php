@@ -4,6 +4,7 @@ namespace Installer\Core;
 
 use PDO;
 use PDOException;
+use Installer\Core\Debug;
 
 class DatabaseManager
 {
@@ -51,7 +52,10 @@ class DatabaseManager
 
     public function createDatabase()
     {
+        Debug::log("createDatabase() called for driver: {$this->driver}");
+        
         if ($this->driver === 'sqlite') {
+            Debug::log("SQLite database creation");
             // SQLite database is a file, created on connection if not exists.
             // We can try to touch the file to ensure the directory is writable.
             try {
@@ -66,30 +70,55 @@ class DatabaseManager
         }
 
         if (!$this->pdo) {
+            echo "[DEBUG] No PDO connection, testing connection<br>";
             if (!$this->testConnection()) {
                  $this->errors[] = "No active PDO connection. Call testConnection() first.";
+                 echo "[DEBUG] Connection test failed<br>";
                 return false;
             }
+            echo "[DEBUG] Connection test passed<br>";
         }
 
         try {
             // Check if database exists
+            echo "[DEBUG] Checking if database exists<br>";
             $query = $this->getCheckDatabaseExistsSql();
+            echo "[DEBUG] Check query: $query<br>";
             $stmt = $this->pdo->query($query);
-            if ($stmt->fetchColumn() > 0) {
+            $exists = $stmt->fetchColumn();
+            echo "[DEBUG] Database exists check result: $exists<br>";
+            
+            if ($exists > 0) {
+                echo "[DEBUG] Database already exists<br>";
                 return true; // Database already exists
             }
 
+            echo "[DEBUG] Creating database<br>";
             $sql = $this->getCreateDatabaseSql();
+            echo "[DEBUG] Create SQL: $sql<br>";
             $this->pdo->exec($sql);
+            echo "[DEBUG] Database created successfully<br>";
             return true;
         } catch (PDOException $e) {
+            echo "[DEBUG] PDO Exception: " . $e->getMessage() . "<br>";
             // Ignore "database already exists" errors for pgsql
             if ($this->driver === 'pgsql' && strpos($e->getMessage(), 'already exists') !== false) {
                 return true;
             }
             $this->errors[] = "Failed to create database '{$this->database}': " . $e->getMessage();
             return false;
+        }
+    }
+    
+    private function getCheckDatabaseExistsSql()
+    {
+        switch ($this->driver) {
+            case 'mysql':
+                return "SELECT COUNT(*) FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '{$this->database}'";
+            case 'pgsql':
+                return "SELECT COUNT(*) FROM pg_database WHERE datname = '{$this->database}'";
+            default:
+                throw new \InvalidArgumentException("Database existence check not supported for driver: {$this->driver}");
         }
     }
 
@@ -331,20 +360,87 @@ class DatabaseManager
             return false;
         }
 
-        $this->log("Running migrations from: {$migrationPath}");
+        $this->log("Running PHP migrations from: {$migrationPath}");
         
-        $migrations = glob($migrationPath . '/*.sql');
-        sort($migrations);
-        
-        foreach ($migrations as $migration) {
-            $this->log("Running migration: " . basename($migration));
-            if (!$this->importSqlFile($migration)) {
-                return false;
+        try {
+            // Connect to the database
+            $dsn = $this->buildDsn(true);
+            $pdo = new PDO($dsn, $this->username, $this->password);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            
+            // Get all PHP migration files
+            $migrations = glob($migrationPath . '/*.php');
+            sort($migrations);
+            
+            $this->log("Found " . count($migrations) . " migration files");
+            
+            foreach ($migrations as $migration) {
+                $migrationName = basename($migration);
+                $this->log("Running migration: {$migrationName}");
+                
+                // Execute the migration function
+                $migrationFn = require $migration;
+                if (is_callable($migrationFn)) {
+                    $migrationFn($pdo);
+                    $this->log("Migration {$migrationName} completed successfully");
+                } else {
+                    $this->errors[] = "Migration {$migrationName} does not return a callable function";
+                    return false;
+                }
             }
+            
+            $this->log("All migrations completed successfully");
+            return true;
+        } catch (Exception $e) {
+            $this->errors[] = "Migration error: " . $e->getMessage();
+            $this->log("ERROR: Migration failed - " . $e->getMessage());
+            return false;
         }
+    }
+    
+    public function runSeeders($seederPath)
+    {
+        if (!is_dir($seederPath)) {
+            $this->errors[] = "Seeder directory not found: {$seederPath}";
+            return false;
+        }
+
+        $this->log("Running PHP seeders from: {$seederPath}");
         
-        $this->log("All migrations completed successfully");
-        return true;
+        try {
+            // Connect to the database
+            $dsn = $this->buildDsn(true);
+            $pdo = new PDO($dsn, $this->username, $this->password);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            
+            // Get all PHP seeder files
+            $seeders = glob($seederPath . '/*.php');
+            sort($seeders);
+            
+            $this->log("Found " . count($seeders) . " seeder files");
+            
+            foreach ($seeders as $seeder) {
+                $seederName = basename($seeder);
+                $this->log("Running seeder: {$seederName}");
+                
+                // Execute the seeder function
+                $seederFn = require $seeder;
+                if (is_callable($seederFn)) {
+                    $seederFn($pdo);
+                    $this->log("Seeder {$seederName} completed successfully");
+                } else {
+                    $this->errors[] = "Seeder {$seederName} does not return a callable function";
+                    return false;
+                }
+            }
+            
+            $this->log("All seeders completed successfully");
+            return true;
+        } catch (Exception $e) {
+            $this->errors[] = "Seeder error: " . $e->getMessage();
+            $this->log("ERROR: Seeder failed - " . $e->getMessage());
+            return false;
+        }
     }
 
     public function getErrors()

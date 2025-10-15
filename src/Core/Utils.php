@@ -6,6 +6,9 @@ class Utils
 {
     public static function getBasePath($path = '')
     {
+        if (!defined('INSTALLER_BASE_PATH')) {
+            define('INSTALLER_BASE_PATH', dirname(__DIR__, 2));
+        }
         return rtrim(INSTALLER_BASE_PATH, '/') . '/' . ltrim($path, '/');
     }
 

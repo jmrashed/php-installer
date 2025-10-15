@@ -49,10 +49,10 @@
             <?php endforeach; ?>
         </ul>
 
-        <form action="index.php?step=system_check" method="POST" class="mt-4">
+        <form action="install?step=system_check" method="POST" class="mt-4">
             <input type="hidden" name="csrf_token" value="<?= \Installer\Core\Utils::getCsrfToken() ?>">
             <div class="d-flex justify-content-between">
-                <a href="index.php?step=license" class="btn btn-secondary">Previous</a>
+                <a href="install?step=license" class="btn btn-secondary">Previous</a>
                 <button type="submit" class="btn btn-primary" <?= !empty($errors) ? 'disabled' : '' ?>>Next</button>
             </div>
         </form>

@@ -1,13 +1,13 @@
 <?php
-/**
- * @var \Installer\Core\Installer $installer
- * @var array $alerts
- * @var string $db_host
- * @var string $db_port
- * @var string $db_name
- * @var string $db_username
- * @var string $db_password
- */
+    /**
+     * @var \Installer\Core\Installer $installer
+     * @var array $alerts
+     * @var string $db_host
+     * @var string $db_port
+     * @var string $db_name
+     * @var string $db_username
+     * @var string $db_password
+     */
 ?>
 
 <div class="card mx-auto mt-5" style="max-width: 600px;">
@@ -18,14 +18,14 @@
         <?php include \Installer\Core\Utils::getBasePath('src/Views/partials/alerts.php'); ?>
         <?php include \Installer\Core\Utils::getBasePath('src/Views/partials/progressbar.php'); ?>
 
-        <form action="index.php?step=db_config" method="POST">
-            <input type="hidden" name="csrf_token" value="<?= \Installer\Core\Utils::getCsrfToken() ?>">
+        <form action="install?step=db_config" method="POST">
+            <input type="hidden" name="csrf_token" value="<?php echo \Installer\Core\Utils::getCsrfToken()?>">
             <div class="mb-3">
                 <label for="db_driver" class="form-label">Database Type</label>
                 <select class="form-control" id="db_driver" name="db_driver" onchange="toggleDatabaseFields()" required>
                     <?php foreach ($supported_databases as $key => $db): ?>
-                        <option value="<?= $key ?>" <?= ($db_driver ?? 'mysql') === $key ? 'selected' : '' ?>>
-                            <?= $db['name'] ?>
+                        <option value="<?php echo $key?>" <?php echo ($db_driver ?? 'mysql') === $key ? 'selected' : ''?>>
+                            <?php echo $db['name']?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -33,30 +33,30 @@
             <div id="server-fields">
                 <div class="mb-3">
                     <label for="db_host" class="form-label">Database Host</label>
-                    <input type="text" class="form-control" id="db_host" name="db_host" value="<?= $db_host ?? 'localhost' ?>" required>
+                    <input type="text" class="form-control" id="db_host" name="db_host" value="<?php echo $db_host ?? 'localhost'?>" required>
                 </div>
                 <div class="mb-3">
                     <label for="db_port" class="form-label">Database Port</label>
-                    <input type="number" class="form-control" id="db_port" name="db_port" value="<?= $db_port ?? '3306' ?>" required>
+                    <input type="number" class="form-control" id="db_port" name="db_port" value="<?php echo $db_port ?? '3306'?>" required>
                 </div>
             </div>
             <div class="mb-3">
                 <label for="db_name" class="form-label" id="db_name_label">Database Name</label>
-                <input type="text" class="form-control" id="db_name" name="db_name" value="<?= $db_name ?? '' ?>" required>
+                <input type="text" class="form-control" id="db_name" name="db_name" value="<?php echo $db_name ?? ''?>" required>
                 <small class="form-text text-muted" id="db_name_help">Enter the database name</small>
             </div>
             <div id="auth-fields">
                 <div class="mb-3">
                     <label for="db_username" class="form-label">Database Username</label>
-                    <input type="text" class="form-control" id="db_username" name="db_username" value="<?= $db_username ?? 'root' ?>" required>
+                    <input type="text" class="form-control" id="db_username" name="db_username" value="<?php echo $db_username ?? 'root'?>" required>
                 </div>
                 <div class="mb-3">
                     <label for="db_password" class="form-label">Database Password</label>
-                    <input type="password" class="form-control" id="db_password" name="db_password" value="<?= $db_password ?? '' ?>">
+                    <input type="password" class="form-control" id="db_password" name="db_password" value="<?php echo $db_password ?? ''?>">
                 </div>
             </div>
             <div class="d-flex justify-content-between">
-                <a href="index.php?step=system_check" class="btn btn-secondary">Previous</a>
+                <a href="install?step=system_check" class="btn btn-secondary">Previous</a>
                 <button type="submit" class="btn btn-primary">Next</button>
             </div>
         </form>
@@ -71,7 +71,7 @@ function toggleDatabaseFields() {
     const dbNameLabel = document.getElementById('db_name_label');
     const dbNameHelp = document.getElementById('db_name_help');
     const dbPortField = document.getElementById('db_port');
-    
+
     if (driver === 'sqlite') {
         serverFields.style.display = 'none';
         authFields.style.display = 'none';
@@ -88,9 +88,9 @@ function toggleDatabaseFields() {
         document.getElementById('db_host').required = true;
         document.getElementById('db_port').required = true;
         document.getElementById('db_username').required = true;
-        
+
         // Set default ports
-        const supportedDbs = <?= json_encode($supported_databases) ?>;
+        const supportedDbs = <?php echo json_encode($supported_databases)?>;
         if (supportedDbs[driver] && supportedDbs[driver].default_port) {
             dbPortField.value = supportedDbs[driver].default_port;
         }
