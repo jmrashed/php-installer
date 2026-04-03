@@ -70,37 +70,39 @@ class DatabaseManager
         }
 
         if (!$this->pdo) {
-            echo "[DEBUG] No PDO connection, testing connection<br>";
+            Debug::log("No PDO connection, testing connection");
             if (!$this->testConnection()) {
-                 $this->errors[] = "No active PDO connection. Call testConnection() first.";
-                 echo "[DEBUG] Connection test failed<br>";
+                $this->errors[] = "No active PDO connection. Call testConnection() first.";
+                Debug::log("Connection test failed");
                 return false;
             }
-            echo "[DEBUG] Connection test passed<br>";
+            Debug::log("Connection test passed");
         }
 
         try {
             // Check if database exists
-            echo "[DEBUG] Checking if database exists<br>";
-            $query = $this->getCheckDatabaseExistsSql();
-            echo "[DEBUG] Check query: $query<br>";
-            $stmt = $this->pdo->query($query);
-            $exists = $stmt->fetchColumn();
-            echo "[DEBUG] Database exists check result: $exists<br>";
-            
+            Debug::log("Checking if database exists");
+
+            $queryData = $this->getCheckDatabaseExistsQuery();
+            $stmt = $this->pdo->prepare($queryData['sql']);
+            $stmt->execute($queryData['params']);
+            $exists = (int) $stmt->fetchColumn();
+
+            Debug::log("Database exists check result: {$exists}");
+
             if ($exists > 0) {
-                echo "[DEBUG] Database already exists<br>";
-                return true; // Database already exists
+                Debug::log("Database already exists");
+                return true;
             }
 
-            echo "[DEBUG] Creating database<br>";
+            Debug::log("Creating database");
             $sql = $this->getCreateDatabaseSql();
-            echo "[DEBUG] Create SQL: $sql<br>";
+            Debug::log("Create SQL: {$sql}");
             $this->pdo->exec($sql);
-            echo "[DEBUG] Database created successfully<br>";
+            Debug::log("Database created successfully");
             return true;
         } catch (PDOException $e) {
-            echo "[DEBUG] PDO Exception: " . $e->getMessage() . "<br>";
+            Debug::log("PDO Exception: " . $e->getMessage());
             // Ignore "database already exists" errors for pgsql
             if ($this->driver === 'pgsql' && strpos($e->getMessage(), 'already exists') !== false) {
                 return true;
@@ -110,13 +112,19 @@ class DatabaseManager
         }
     }
     
-    private function getCheckDatabaseExistsSql()
+    private function getCheckDatabaseExistsQuery()
     {
         switch ($this->driver) {
             case 'mysql':
-                return "SELECT COUNT(*) FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '{$this->database}'";
+                return [
+                    'sql' => 'SELECT COUNT(*) FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = :database',
+                    'params' => [':database' => $this->database]
+                ];
             case 'pgsql':
-                return "SELECT COUNT(*) FROM pg_database WHERE datname = '{$this->database}'";
+                return [
+                    'sql' => 'SELECT COUNT(*) FROM pg_database WHERE datname = :database',
+                    'params' => [':database' => $this->database]
+                ];
             default:
                 throw new \InvalidArgumentException("Database existence check not supported for driver: {$this->driver}");
         }
