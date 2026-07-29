@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2026-07-29
+
+Correctness fixes across multi-database support, SQL import, and the debug
+subsystem. Closes the remaining Phase 2 items from the code-quality/
+architecture audit (see `audit/CHECKLIST.md`).
+
+### Fixed
+
+- **`AdminCreator` now works on SQLite, not just MySQL/PostgreSQL.** It
+  previously hardcoded `NOW()` in the admin-account INSERT, which SQLite
+  doesn't support. The timestamp is now computed in PHP and bound as a
+  parameter, so it works identically across all three supported drivers.
+- **`Debug::isEnabled()`'s `.env` lookup no longer assumes one fixed install
+  layout.** It previously guessed the `.env` location by walking up exactly
+  four directories, which only works when this package sits at
+  `vendor/<vendor>/php-installer`. It now checks, in order: an explicit
+  `INSTALLER_ENV_PATH` constant (for full consumer control), a `.env` next to
+  `INSTALLER_BASE_PATH` (the "copy the folder into your project root" install
+  method the README documents), then three levels above that (the Composer
+  install layout), before falling back to the old fixed-depth guess.
+- **SQL import no longer corrupts dumps containing semicolons inside string
+  values or quoted identifiers.** `DatabaseManager::importSqlFile()` used
+  `explode(';', $sql)`, which splits mid-statement on any `;` inside a quoted
+  string (e.g. `INSERT INTO t (bio) VALUES ('Hello; World');`) or a
+  backtick-quoted identifier. Statements are now split with a small
+  state-machine parser that tracks quote context and only splits on
+  statement-terminating semicolons.
+
+### Changed
+
+- **Consolidated on one migration mechanism.** `database/migrations/` used to
+  ship both `.sql` files (which `DatabaseManager::runMigrations()` never
+  actually executed — it only globs `*.php`) and document a PHP-callable
+  format in the README. The `.sql` migration files have been removed and
+  replaced with equivalent, driver-aware `.php` migrations
+  (`001_create_users_table.php`, `002_create_admin_table.php`) that the
+  runner actually executes. `database/migrations/README.md` now documents
+  the `.php` format exclusively.
+- **Finished aligning the PHP version requirement.** `src/Core/SystemChecker.php`
+  and the README's example config previously still said `7.4` despite
+  `composer.json` requiring `>=8.1` (and the README badge already having been
+  corrected in 2.1.0). All references now agree on `8.1`.
+
 ## [2.1.0] - 2026-07-29
 
 Security and correctness hardening release. No new user-facing features; every

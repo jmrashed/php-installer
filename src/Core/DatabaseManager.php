@@ -176,7 +176,7 @@ class DatabaseManager
             $this->log("SQL content cleaned. New size: " . strlen($sql) . " bytes");
             
             // Split SQL into individual statements
-            $statements = array_filter(array_map('trim', explode(';', $sql)));
+            $statements = $this->splitStatements($sql);
             $this->log("Found " . count($statements) . " SQL statements");
             
             $executed = 0;
@@ -286,6 +286,60 @@ class DatabaseManager
     {
         $statement = trim($statement);
         return empty($statement) || strpos($statement, '--') === 0 || strpos($statement, '/*') === 0;
+    }
+
+    /**
+     * Split a SQL dump into individual statements on `;`, without breaking on
+     * semicolons that appear inside quoted strings or backtick-quoted
+     * identifiers (e.g. INSERT INTO t (bio) VALUES ('Hello; World');). A plain
+     * explode(';', $sql) corrupts any dump containing such values.
+     */
+    private function splitStatements($sql)
+    {
+        $statements = [];
+        $buffer = '';
+        $quoteChar = null;
+        $escaped = false;
+        $length = strlen($sql);
+
+        for ($i = 0; $i < $length; $i++) {
+            $char = $sql[$i];
+            $buffer .= $char;
+
+            if ($escaped) {
+                $escaped = false;
+                continue;
+            }
+
+            if ($quoteChar !== null) {
+                if ($char === '\\' && $quoteChar !== '`') {
+                    $escaped = true;
+                } elseif ($char === $quoteChar) {
+                    $quoteChar = null;
+                }
+                continue;
+            }
+
+            if ($char === "'" || $char === '"' || $char === '`') {
+                $quoteChar = $char;
+                continue;
+            }
+
+            if ($char === ';') {
+                $statement = trim(substr($buffer, 0, -1));
+                if ($statement !== '') {
+                    $statements[] = $statement;
+                }
+                $buffer = '';
+            }
+        }
+
+        $tail = trim($buffer);
+        if ($tail !== '') {
+            $statements[] = $tail;
+        }
+
+        return $statements;
     }
 
     private function log($message)

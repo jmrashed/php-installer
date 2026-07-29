@@ -17,7 +17,7 @@ class SystemChecker
         // Define minimum PHP version
         $this->requirements['php_version'] = [
             'name' => 'PHP Version',
-            'required' => '7.4.0',
+            'required' => '8.1.0',
             'current' => PHP_VERSION,
             'status' => false,
             'message' => ''

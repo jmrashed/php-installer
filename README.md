@@ -82,7 +82,7 @@ Copy `config/installer.php.dist` to `config/installer.php`, then edit it:
 return [
     'app_name' => 'Your Application',
     'version' => '1.0.0',
-    'php_version' => '7.4',
+    'php_version' => '8.1',
     'required_extensions' => ['pdo_mysql', 'curl', 'mbstring'],
     'writable_dirs' => ['config', 'storage', 'uploads'],
     'database_file' => __DIR__ . '/../database/db.sql',
