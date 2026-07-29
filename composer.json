@@ -1,6 +1,6 @@
 {
   "name": "jmrashed/php-installer",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Reusable, framework-agnostic web installer for PHP applications — step-by-step installation wizard with multi-database support, migrations, and admin creation.",
   "type": "library",
   "keywords": [
@@ -47,12 +47,21 @@
     }
   },
   "scripts": {
-    "validate": "composer validate --no-check-publish"
+    "validate": "composer validate --no-check-publish",
+    "test": "phpunit",
+    "stan": "phpstan analyse",
+    "cs": "phpcs",
+    "cs-fix": "phpcbf"
   },
   "config": {
     "optimize-autoloader": true,
     "sort-packages": true
   },
   "minimum-stability": "stable",
-  "prefer-stable": true
+  "prefer-stable": true,
+  "require-dev": {
+    "phpstan/phpstan": "^2.2",
+    "phpunit/phpunit": "^10.5",
+    "squizlabs/php_codesniffer": "^4.0"
+  }
 }

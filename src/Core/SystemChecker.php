@@ -27,7 +27,7 @@ class SystemChecker
         $configPath = Utils::getBasePath('config/installer.php');
         $config = file_exists($configPath) ? include $configPath : [];
         $supportedDatabases = $config['supported_databases'] ?? [];
-        
+
         // Define required PHP extensions
         $this->requirements['extensions'] = [
             'pdo' => [
@@ -56,7 +56,7 @@ class SystemChecker
                 'message' => ''
             ]
         ];
-        
+
         // Add database-specific extensions
         foreach ($supportedDatabases as $driver => $dbConfig) {
             if (isset($dbConfig['extension'])) {
@@ -132,7 +132,7 @@ class SystemChecker
                 $ext['status'] = false;
                 $isOptional = isset($ext['optional']) && $ext['optional'];
                 $ext['message'] = ($isOptional ? "Optional extension" : "Required extension") . " '{$ext['name']}' is not installed.";
-                
+
                 // Only add to errors if it's not optional
                 if (!$isOptional) {
                     $this->errors[] = $ext['message'];
@@ -155,7 +155,7 @@ class SystemChecker
                     touch($dir['path']);
                 }
             }
-            
+
             if (is_writable($dir['path'])) {
                 $dir['status'] = true;
                 $dir['message'] = 'Writable';

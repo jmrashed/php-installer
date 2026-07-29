@@ -1,188 +1,134 @@
 <?php
 
-require_once __DIR__ . '/../src/Core/Installer.php';
-require_once __DIR__ . '/../src/Core/SystemChecker.php';
-require_once __DIR__ . '/../src/Core/DatabaseManager.php';
-require_once __DIR__ . '/../src/Core/ConfigWriter.php';
-require_once __DIR__ . '/../src/Core/AdminCreator.php';
-require_once __DIR__ . '/../src/Core/Utils.php';
-require_once __DIR__ . '/../src/Controllers/StepController.php';
+namespace Installer\Tests;
 
 use Installer\Core\Installer;
 use Installer\Core\SystemChecker;
 use Installer\Core\DatabaseManager;
 use Installer\Core\Utils;
+use Installer\Controllers\StepController;
+use PHPUnit\Framework\TestCase;
 
-class InstallerTest
+class InstallerTest extends TestCase
 {
-    private $passed = 0;
-    private $failed = 0;
-
-    public function runAllTests()
+    protected function setUp(): void
     {
-        echo "Running PHP Installer Tests...\n\n";
-        
-        $this->testInstallerConstruction();
-        $this->testStepNavigation();
-        $this->testSystemChecker();
-        $this->testDatabaseManager();
-        $this->testUtils();
-        $this->testStepController();
-        
-        echo "\n=== Test Results ===\n";
-        echo "Passed: {$this->passed}\n";
-        echo "Failed: {$this->failed}\n";
-        echo "Total: " . ($this->passed + $this->failed) . "\n";
-        
-        return $this->failed === 0;
-    }
-
-    private function testInstallerConstruction()
-    {
-        echo "Testing Installer Construction...\n";
-        
-        try {
-            $installer = new Installer();
-            $this->assert($installer->getCurrentStep() === 'welcome', 'Default step should be welcome');
-            $this->assert($installer->getTotalSteps() === 8, 'Should have 8 total steps');
-            $this->assert(count($installer->getSteps()) === 8, 'Steps array should have 8 items');
-            echo "✓ Installer construction tests passed\n\n";
-        } catch (Exception $e) {
-            $this->fail("Installer construction failed: " . $e->getMessage());
+        if (!defined('INSTALLER_BASE_PATH')) {
+            define('INSTALLER_BASE_PATH', dirname(__DIR__));
         }
+        $_SESSION = [];
+        $_GET = [];
     }
 
-    private function testStepNavigation()
+    public function testInstallerConstruction(): void
     {
-        echo "Testing Step Navigation...\n";
-        
-        try {
-            $installer = new Installer();
-            
-            // Test step index
-            $this->assert($installer->getStepIndex('welcome') === 0, 'Welcome should be step 0');
-            $this->assert($installer->getStepIndex('finish') === 7, 'Finish should be step 7');
-            
-            // Test next step
-            $installer->setNextStep();
-            $this->assert($installer->getCurrentStep() === 'license', 'Next step should be license');
-            
-            // Test previous step
-            $installer->setPreviousStep();
-            $this->assert($installer->getCurrentStep() === 'welcome', 'Previous step should be welcome');
-            
-            echo "✓ Step navigation tests passed\n\n";
-        } catch (Exception $e) {
-            $this->fail("Step navigation failed: " . $e->getMessage());
+        $installer = new Installer();
+
+        $this->assertSame('welcome', $installer->getCurrentStep(), 'Default step should be welcome');
+        $this->assertSame(8, $installer->getTotalSteps(), 'Should have 8 total steps');
+        $this->assertCount(8, $installer->getSteps(), 'Steps array should have 8 items');
+    }
+
+    public function testStepNavigation(): void
+    {
+        $installer = new Installer();
+
+        $this->assertSame(0, $installer->getStepIndex('welcome'), 'Welcome should be step 0');
+        $this->assertSame(7, $installer->getStepIndex('finish'), 'Finish should be step 7');
+
+        $installer->setNextStep();
+        $this->assertSame('license', $installer->getCurrentStep(), 'Next step should be license');
+
+        $installer->setPreviousStep();
+        $this->assertSame('welcome', $installer->getCurrentStep(), 'Previous step should be welcome');
+    }
+
+    public function testSystemChecker(): void
+    {
+        $systemChecker = new SystemChecker();
+        $result = $systemChecker->checkSystem();
+        $requirements = $systemChecker->getRequirements();
+
+        $this->assertIsBool($result, 'checkSystem should return boolean');
+        $this->assertIsArray($requirements, 'getRequirements should return array');
+        $this->assertArrayHasKey('php_version', $requirements, 'Should check PHP version');
+        $this->assertArrayHasKey('extensions', $requirements, 'Should check extensions');
+    }
+
+    public function testDatabaseManagerReturnsBooleanWithoutThrowing(): void
+    {
+        // No real database is guaranteed to be reachable here; testConnection()
+        // must degrade to a caught, reported failure rather than throwing.
+        $dbManager = new DatabaseManager('127.0.0.1', '3306', 'nonexistent_test_db', 'root', 'wrong-password');
+
+        $connectionResult = $dbManager->testConnection();
+        $this->assertIsBool($connectionResult, 'testConnection should return boolean');
+
+        $errors = $dbManager->getErrors();
+        $this->assertIsArray($errors, 'getErrors should return array');
+    }
+
+    public function testUtilsGetBasePath(): void
+    {
+        $basePath = Utils::getBasePath('test');
+        $this->assertIsString($basePath);
+    }
+
+    public function testUtilsSanitizeInputNormalizesWithoutEscaping(): void
+    {
+        // sanitizeInput() only trims/normalizes; it must NOT HTML-escape. HTML
+        // escaping happens once, at output, via Utils::e() (see CHANGELOG 2.1.0 -
+        // escaping here as well would double-encode redisplayed/persisted values).
+        $sanitized = Utils::sanitizeInput('  <script>alert("test")</script>  ');
+        $this->assertSame('<script>alert("test")</script>', $sanitized);
+    }
+
+    public function testUtilsGenerateRandomString(): void
+    {
+        $randomString = Utils::generateRandomString(16);
+        $this->assertSame(16, strlen($randomString));
+    }
+
+    public function testStepControllerCanBeInstantiated(): void
+    {
+        $installer = new Installer();
+        $stepController = new StepController($installer);
+
+        $this->assertInstanceOf(StepController::class, $stepController);
+    }
+
+    /**
+     * Regression test for security-audit.md C2 (XSS via unescaped view output).
+     */
+    public function testUtilsEscapesQuotesAndHtmlTags(): void
+    {
+        $escaped = Utils::e('X\'); <script>alert(1)</script>');
+
+        $this->assertStringNotContainsString('<script>', $escaped);
+        $this->assertStringContainsString('&#039;', $escaped);
+        $this->assertStringContainsString('&lt;script&gt;', $escaped);
+    }
+
+    /**
+     * Regression test for feature-gap-analysis.md's re-install gap: the lock
+     * file is written but was never checked by Installer::handle(), so the
+     * installer could be re-run indefinitely against a live database.
+     */
+    public function testIsInstalledReflectsLockFile(): void
+    {
+        $installer = new Installer();
+        $lockFile = Utils::getLockFile();
+
+        if (file_exists($lockFile)) {
+            unlink($lockFile);
         }
-    }
 
-    private function testSystemChecker()
-    {
-        echo "Testing System Checker...\n";
-        
-        try {
-            if (!defined('INSTALLER_BASE_PATH')) {
-                define('INSTALLER_BASE_PATH', __DIR__ . '/..');
-            }
-            $systemChecker = new SystemChecker();
-            $result = $systemChecker->checkSystem();
-            $requirements = $systemChecker->getRequirements();
-            
-            $this->assert(is_bool($result), 'checkSystem should return boolean');
-            $this->assert(is_array($requirements), 'getRequirements should return array');
-            $this->assert(isset($requirements['php_version']), 'Should check PHP version');
-            $this->assert(isset($requirements['extensions']), 'Should check extensions');
-            
-            echo "✓ System checker tests passed\n\n";
-        } catch (Exception $e) {
-            $this->fail("System checker failed: " . $e->getMessage());
-        }
-    }
+        $this->assertFalse($installer->isInstalled(), 'Should not be installed before the lock file exists');
 
-    private function testDatabaseManager()
-    {
-        echo "Testing Database Manager...\n";
-        
-        try {
-            $dbManager = new DatabaseManager('localhost', '3306', 'test_db', 'root', '');
-            
-            // Test connection (may fail if no database, but should not throw exception)
-            $connectionResult = $dbManager->testConnection();
-            $this->assert(is_bool($connectionResult), 'testConnection should return boolean');
-            
-            $errors = $dbManager->getErrors();
-            $this->assert(is_array($errors), 'getErrors should return array');
-            
-            echo "✓ Database manager tests passed\n\n";
-        } catch (Exception $e) {
-            $this->fail("Database manager failed: " . $e->getMessage());
-        }
-    }
+        $installer->createLockFile();
+        $this->assertTrue($installer->isInstalled(), 'Should be installed once the lock file is written');
 
-    private function testUtils()
-    {
-        echo "Testing Utils...\n";
-        
-        try {
-            // Test path generation
-            $basePath = Utils::getBasePath('test');
-            $this->assert(is_string($basePath), 'getBasePath should return string');
-            
-            // Test sanitization
-            $sanitized = Utils::sanitizeInput('<script>alert("test")</script>');
-            $this->assert(!strpos($sanitized, '<script>'), 'Should sanitize HTML');
-            
-            // Test random string generation
-            $randomString = Utils::generateRandomString(16);
-            $this->assert(strlen($randomString) === 16, 'Should generate string of correct length');
-            
-            echo "✓ Utils tests passed\n\n";
-        } catch (Exception $e) {
-            $this->fail("Utils failed: " . $e->getMessage());
-        }
+        $installer->deleteLockFile();
+        $this->assertFalse($installer->isInstalled(), 'Should not be installed after the lock file is removed');
     }
-
-    private function testStepController()
-    {
-        echo "Testing Step Controller...\n";
-        
-        try {
-            if (!defined('INSTALLER_BASE_PATH')) {
-                define('INSTALLER_BASE_PATH', __DIR__ . '/..');
-            }
-            
-            $installer = new Installer();
-            $stepController = new \Installer\Controllers\StepController($installer);
-            
-            $this->assert(is_object($stepController), 'StepController should be instantiated');
-            
-            echo "✓ Step controller tests passed\n\n";
-        } catch (Exception $e) {
-            $this->fail("Step controller failed: " . $e->getMessage());
-        }
-    }
-
-    private function assert($condition, $message)
-    {
-        if ($condition) {
-            $this->passed++;
-        } else {
-            $this->failed++;
-            echo "✗ FAILED: $message\n";
-        }
-    }
-
-    private function fail($message)
-    {
-        $this->failed++;
-        echo "✗ FAILED: $message\n\n";
-    }
-}
-
-// Run tests if called directly
-if (basename(__FILE__) === basename($_SERVER['SCRIPT_NAME'])) {
-    $test = new InstallerTest();
-    $success = $test->runAllTests();
-    exit($success ? 0 : 1);
 }

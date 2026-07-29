@@ -44,7 +44,7 @@ class StepController
                 // Pre-fill with session data if available
                 $configPath = Utils::getBasePath('config/installer.php');
                 Debug::log("Config path: $configPath");
-                
+
                 if (file_exists($configPath)) {
                     Debug::log("Config file exists");
                     $config = include $configPath;
@@ -52,7 +52,7 @@ class StepController
                     Debug::log("Config file not found, using defaults");
                     $config = [];
                 }
-                
+
                 $data['supported_databases'] = $config['supported_databases'] ?? [
                     'mysql' => ['name' => 'MySQL', 'default_port' => '3306'],
                     'pgsql' => ['name' => 'PostgreSQL', 'default_port' => '5432'],
@@ -142,7 +142,7 @@ class StepController
                 $dbName = Utils::sanitizeInput($_POST['db_name'] ?? '');
                 $dbUsername = Utils::sanitizeInput($_POST['db_username'] ?? '');
                 $dbPassword = $_POST['db_password'] ?? ''; // Don't sanitize password
-                
+
                 Debug::log("DB Config - Driver: $dbDriver, Host: $dbHost, Port: $dbPort, Name: $dbName, User: $dbUsername");
 
                 // Validate required fields based on driver
@@ -171,7 +171,7 @@ class StepController
                 try {
                     $dbManager = new DatabaseManager($dbHost, $dbPort, $dbName, $dbUsername, $dbPassword, $dbDriver);
                     Debug::log("DatabaseManager created, testing connection");
-                    
+
                     if (!$dbManager->testConnection()) {
                         Debug::log("Connection test failed");
                         foreach ($dbManager->getErrors() as $error) {
@@ -227,7 +227,7 @@ class StepController
                 }
 
                 $dbManager = new DatabaseManager($dbHost, $dbPort, $dbName, $dbUsername, $dbPassword, $dbDriver);
-                
+
                 $importType = $_POST['import_type'] ?? 'default';
                 $configPath = Utils::getBasePath('config/installer.php');
                 $config = file_exists($configPath) ? include $configPath : [];
@@ -236,7 +236,7 @@ class StepController
                     Debug::log("Running migrations");
                     $migrationPath = $config['migration_path'] ?? Utils::getBasePath('database/migrations');
                     Debug::log("Migration path: $migrationPath");
-                    
+
                     if (!$dbManager->runMigrations($migrationPath)) {
                         foreach ($dbManager->getErrors() as $error) {
                             Utils::setAlert('danger', $error);
@@ -244,7 +244,7 @@ class StepController
                         $this->showStep();
                         return;
                     }
-                    
+
                     // Run seeders if available
                     if (!empty($config['seeder_path']) && is_dir($config['seeder_path'])) {
                         Debug::log("Running seeders");
@@ -261,18 +261,18 @@ class StepController
                     }
                 } else {
                     $sqlFilePath = $config['database_file'] ?? Utils::getBasePath('database/db.sql');
-                    
+
                     if ($importType === 'upload') {
                         if (!isset($_FILES['sql_file']) || $_FILES['sql_file']['error'] !== UPLOAD_ERR_OK) {
                             Utils::setAlert('danger', 'Please select a valid file to upload.');
                             $this->showStep();
                             return;
                         }
-                        
+
                         $uploadedFile = $_FILES['sql_file']['tmp_name'];
                         $fileName = $_FILES['sql_file']['name'];
                         $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-                        
+
                         if ($fileExt === 'zip') {
                             $sqlFilePath = $this->extractZipFile($uploadedFile, $fileName);
                             if (!$sqlFilePath) {
@@ -304,7 +304,7 @@ class StepController
                     }
                     Utils::setAlert('success', "Database '{$dbName}' imported successfully!");
                 }
-                
+
                 $this->installer->setNextStep();
                 break;
             case 'app_config':
@@ -334,7 +334,7 @@ class StepController
                 $configContent .= "define('SITE_NAME', " . var_export($appName, true) . ");\n";
                 $configContent .= "define('DEBUG_MODE', false);\n";
                 $configContent .= "define('BASE_URL', " . var_export($appUrl, true) . ");\n";
-                
+
                 // Get the correct path to the main application's includes directory
                 $basePath = Utils::getBasePath('');
                 Debug::log("Base path: $basePath");
@@ -343,14 +343,14 @@ class StepController
                 Debug::log("Main app path: $mainAppPath");
                 $configPath = $mainAppPath . '/includes/config.php';
                 Debug::log("Writing config to: $configPath");
-                
+
                 // Check if the includes directory exists
                 $includesDir = dirname($configPath);
                 if (!is_dir($includesDir)) {
                     Debug::log("Includes directory doesn't exist, creating: $includesDir");
                     mkdir($includesDir, 0755, true);
                 }
-                
+
                 if (file_put_contents($configPath, $configContent) === false) {
                     Utils::setAlert('danger', 'Failed to write application config file.');
                     $this->showStep();
@@ -397,7 +397,7 @@ class StepController
                 try {
                     $dbDriver = $_SESSION['db_driver'] ?? 'mysql';
                     $dbManager = new DatabaseManager($dbHost, $dbPort, $dbName, $dbUsername, $dbPassword, $dbDriver);
-                    
+
                     // Build DSN based on driver
                     switch ($dbDriver) {
                         case 'mysql':
@@ -412,7 +412,7 @@ class StepController
                         default:
                             throw new \InvalidArgumentException("Unsupported database driver: {$dbDriver}");
                     }
-                    
+
                     $pdo = new \PDO($dsn, $dbUsername, $dbPassword);
                     $adminCreator = new AdminCreator($pdo);
                     if (!$adminCreator->createAdminUser($adminUsername, $adminEmail, $adminPassword)) {
@@ -439,7 +439,6 @@ class StepController
                 Debug::log("Redirecting to main application");
                 header('Location: /');
                 exit;
-                break;
             default:
                 Utils::redirect(Utils::getBasePath());
                 break;
@@ -472,28 +471,28 @@ class StepController
             Utils::setAlert('danger', 'ZIP extension not available. Please upload a .sql file instead.');
             return false;
         }
-        
+
         $zip = new \ZipArchive();
-        if ($zip->open($zipPath) !== TRUE) {
+        if ($zip->open($zipPath) !== true) {
             Utils::setAlert('danger', 'Failed to open ZIP file: ' . $fileName);
             return false;
         }
-        
+
         $extractPath = sys_get_temp_dir() . '/installer_' . uniqid();
         if (!mkdir($extractPath, 0755, true)) {
             Utils::setAlert('danger', 'Failed to create extraction directory.');
             $zip->close();
             return false;
         }
-        
+
         if (!$zip->extractTo($extractPath)) {
             Utils::setAlert('danger', 'Failed to extract ZIP file.');
             $zip->close();
             return false;
         }
-        
+
         $zip->close();
-        
+
         // Find first .sql file in extracted contents
         $sqlFile = $this->findSqlFile($extractPath);
         if (!$sqlFile) {
@@ -501,10 +500,10 @@ class StepController
             $this->cleanupDirectory($extractPath);
             return false;
         }
-        
+
         return $sqlFile;
     }
-    
+
     private function findSqlFile($directory)
     {
         $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory));
@@ -515,7 +514,7 @@ class StepController
         }
         return false;
     }
-    
+
     private function cleanupDirectory($directory)
     {
         if (is_dir($directory)) {
@@ -527,5 +526,4 @@ class StepController
             rmdir($directory);
         }
     }
-
 }

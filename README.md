@@ -1,5 +1,6 @@
 # PHP Installer Package
 
+[![CI](https://github.com/jmrashed/php-installer/actions/workflows/ci.yml/badge.svg)](https://github.com/jmrashed/php-installer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.1-blue.svg)](https://php.net/)
 [![GitHub release](https://img.shields.io/github/release/jmrashed/php-installer.svg)](https://github.com/jmrashed/php-installer/releases)
@@ -264,6 +265,19 @@ Create custom config templates in `src/Templates/`:
 
 - `config_template.php` - Application configuration
 - `env_template.php` - Environment variables
+
+## 🧪 Development
+
+```bash
+composer install         # install dependencies (including dev tools)
+composer test             # run the PHPUnit test suite
+composer stan              # run PHPStan static analysis (level 2)
+composer cs                 # check code style against PSR-12
+composer cs-fix              # auto-fix what phpcbf can fix
+```
+
+CI runs all of the above (test, PHPStan, PHPCS errors) on PHP 8.1/8.2/8.3 on
+every push and pull request — see `.github/workflows/ci.yml`.
 
 ## 🔒 Security
 

@@ -1,0 +1,9 @@
+parameters:
+    level: 2
+    paths:
+        - src
+    excludePaths:
+        # View templates receive their variables dynamically via extract($data)
+        # in StepController::renderView(); PHPStan can't see that binding, so
+        # it can't meaningfully type-check these files.
+        - src/Views/*

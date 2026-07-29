@@ -5,7 +5,7 @@ namespace Installer\Core;
 class Debug
 {
     private static $debugEnabled = null;
-    
+
     public static function isEnabled()
     {
         if (self::$debugEnabled === null) {
@@ -55,7 +55,7 @@ class Debug
 
         return null;
     }
-    
+
     public static function log($message)
     {
         if (self::isEnabled()) {

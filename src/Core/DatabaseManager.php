@@ -53,7 +53,7 @@ class DatabaseManager
     public function createDatabase()
     {
         Debug::log("createDatabase() called for driver: {$this->driver}");
-        
+
         if ($this->driver === 'sqlite') {
             Debug::log("SQLite database creation");
             // SQLite database is a file, created on connection if not exists.
@@ -111,7 +111,7 @@ class DatabaseManager
             return false;
         }
     }
-    
+
     private function getCheckDatabaseExistsQuery()
     {
         switch ($this->driver) {
@@ -140,9 +140,9 @@ class DatabaseManager
             mkdir($logDir, 0777, true);
         }
         file_put_contents($logFile, date('Y-m-d H:i:s') . ' - IMPORT STARTED' . PHP_EOL, FILE_APPEND);
-        
+
         $this->log("Starting SQL import from: {$sqlFilePath}");
-        
+
         if (!$this->database) {
             $this->errors[] = "Database name not set. Cannot import SQL.";
             $this->log("ERROR: Database name not set");
@@ -174,11 +174,11 @@ class DatabaseManager
             $this->log("Cleaning SQL content...");
             $sql = $this->cleanSql($sql);
             $this->log("SQL content cleaned. New size: " . strlen($sql) . " bytes");
-            
+
             // Split SQL into individual statements
             $statements = $this->splitStatements($sql);
             $this->log("Found " . count($statements) . " SQL statements");
-            
+
             $executed = 0;
             foreach ($statements as $index => $statement) {
                 if (!empty($statement) && !$this->isComment($statement)) {
@@ -197,7 +197,7 @@ class DatabaseManager
                     $this->log("Skipping comment/empty statement " . ($index + 1));
                 }
             }
-            
+
             $this->log("SQL import completed successfully. Executed {$executed} statements");
             return true;
         } catch (PDOException $e) {
@@ -212,25 +212,25 @@ class DatabaseManager
     {
         try {
             $tables = [];
-            
+
             switch ($this->driver) {
                 case 'mysql':
                     $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
                     $this->log("Foreign key checks disabled (MySQL)");
-                    
+
                     $result = $this->pdo->query("SHOW TABLES");
                     while ($row = $result->fetch(PDO::FETCH_NUM)) {
                         $tables[] = $row[0];
                     }
                     break;
-                    
+
                 case 'pgsql':
                     $result = $this->pdo->query("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
                     while ($row = $result->fetch(PDO::FETCH_NUM)) {
                         $tables[] = $row[0];
                     }
                     break;
-                    
+
                 case 'sqlite':
                     $result = $this->pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
                     while ($row = $result->fetch(PDO::FETCH_NUM)) {
@@ -238,9 +238,9 @@ class DatabaseManager
                     }
                     break;
             }
-            
+
             $this->log("Found " . count($tables) . " existing tables to drop");
-            
+
             foreach ($tables as $table) {
                 switch ($this->driver) {
                     case 'mysql':
@@ -255,7 +255,7 @@ class DatabaseManager
                 }
                 $this->log("Dropped table: {$table}");
             }
-            
+
             if ($this->driver === 'mysql') {
                 $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
                 $this->log("Foreign key checks re-enabled (MySQL)");
@@ -272,13 +272,13 @@ class DatabaseManager
         $sql = preg_replace('/^--.*$/m', '', $sql);
         $sql = str_replace('SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";', '', $sql);
         $sql = str_replace('SET time_zone = "+00:00";', '', $sql);
-        
+
         // Remove incomplete INSERT statements that don't end properly
         $sql = preg_replace('/INSERT INTO[^;]*\([^)]*$/', '', $sql);
-        
+
         // Clean up any trailing incomplete statements
         $sql = rtrim($sql, ", \n\r\t");
-        
+
         return $sql;
     }
 
@@ -351,7 +351,7 @@ class DatabaseManager
             getcwd() . '/storage/logs/db_import.log',
             sys_get_temp_dir() . '/installer_db_import.log'
         ];
-        
+
         $logFile = null;
         foreach ($possiblePaths as $path) {
             if ($path) {
@@ -365,7 +365,7 @@ class DatabaseManager
                 }
             }
         }
-        
+
         if ($logFile) {
             @file_put_contents($logFile, date('Y-m-d H:i:s') . ' - ' . $message . PHP_EOL, FILE_APPEND | LOCK_EX);
         }
@@ -419,23 +419,23 @@ class DatabaseManager
         }
 
         $this->log("Running PHP migrations from: {$migrationPath}");
-        
+
         try {
             // Connect to the database
             $dsn = $this->buildDsn(true);
             $pdo = new PDO($dsn, $this->username, $this->password);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            
+
             // Get all PHP migration files
             $migrations = glob($migrationPath . '/*.php');
             sort($migrations);
-            
+
             $this->log("Found " . count($migrations) . " migration files");
-            
+
             foreach ($migrations as $migration) {
                 $migrationName = basename($migration);
                 $this->log("Running migration: {$migrationName}");
-                
+
                 // Execute the migration function
                 $migrationFn = require $migration;
                 if (is_callable($migrationFn)) {
@@ -446,7 +446,7 @@ class DatabaseManager
                     return false;
                 }
             }
-            
+
             $this->log("All migrations completed successfully");
             return true;
         } catch (\Throwable $e) {
@@ -455,7 +455,7 @@ class DatabaseManager
             return false;
         }
     }
-    
+
     public function runSeeders($seederPath)
     {
         if (!is_dir($seederPath)) {
@@ -464,23 +464,23 @@ class DatabaseManager
         }
 
         $this->log("Running PHP seeders from: {$seederPath}");
-        
+
         try {
             // Connect to the database
             $dsn = $this->buildDsn(true);
             $pdo = new PDO($dsn, $this->username, $this->password);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            
+
             // Get all PHP seeder files
             $seeders = glob($seederPath . '/*.php');
             sort($seeders);
-            
+
             $this->log("Found " . count($seeders) . " seeder files");
-            
+
             foreach ($seeders as $seeder) {
                 $seederName = basename($seeder);
                 $this->log("Running seeder: {$seederName}");
-                
+
                 // Execute the seeder function
                 $seederFn = require $seeder;
                 if (is_callable($seederFn)) {
@@ -491,7 +491,7 @@ class DatabaseManager
                     return false;
                 }
             }
-            
+
             $this->log("All seeders completed successfully");
             return true;
         } catch (\Throwable $e) {

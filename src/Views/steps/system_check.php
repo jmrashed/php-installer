@@ -27,7 +27,7 @@
 
         <h4 class="mt-4">PHP Extensions</h4>
         <ul class="list-group mb-3">
-            <?php foreach ($requirements['extensions'] as $ext): ?>
+            <?php foreach ($requirements['extensions'] as $ext) : ?>
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                     <?= \Installer\Core\Utils::e($ext['name']) ?>
                     <span class="badge bg-<?= $ext['status'] ? 'success' : 'danger' ?> rounded-pill">
@@ -39,7 +39,7 @@
 
         <h4 class="mt-4">Writable Directories</h4>
         <ul class="list-group mb-3">
-            <?php foreach ($requirements['writable_directories'] as $dir): ?>
+            <?php foreach ($requirements['writable_directories'] as $dir) : ?>
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                     <?= \Installer\Core\Utils::e($dir['name']) ?>
                     <span class="badge bg-<?= $dir['status'] ? 'success' : 'danger' ?> rounded-pill">

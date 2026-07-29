@@ -9,6 +9,8 @@
 /config/installer.php
 composer.lock
 /installer-test
+.phpunit.cache/
+.phpunit.result.cache
 task.md
 CHECKLIST.md
 audit

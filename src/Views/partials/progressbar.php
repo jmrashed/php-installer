@@ -15,17 +15,17 @@ $currentStepIndex = $installer->getStepIndex($currentStep);
         </div>
     </div>
     <div class="step-indicators mt-3">
-        <?php foreach ($steps as $index => $stepName): ?>
+        <?php foreach ($steps as $index => $stepName) : ?>
             <div class="step-indicator <?= $index <= $currentStepIndex ? 'completed' : '' ?> <?= $index == $currentStepIndex ? 'current' : '' ?>">
                 <div class="step-circle">
-                    <?php if ($index < $currentStepIndex): ?>
+                    <?php if ($index < $currentStepIndex) : ?>
                         <i class="check-icon">✓</i>
-                    <?php else: ?>
+                    <?php else : ?>
                         <?= $index + 1 ?>
                     <?php endif; ?>
                 </div>
                 <div class="step-label"><?= ucfirst(str_replace('_', ' ', $stepName)) ?></div>
-                <?php if ($index < count($steps) - 1): ?>
+                <?php if ($index < count($steps) - 1) : ?>
                     <div class="step-connector <?= $index < $currentStepIndex ? 'completed' : '' ?>"></div>
                 <?php endif; ?>
             </div>

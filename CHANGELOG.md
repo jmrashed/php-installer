@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2026-07-29
+
+Testing and automation infrastructure. No behavioral changes to the
+installer itself — this release closes Phase 3 of the audit checklist
+(`audit/CHECKLIST.md`): a real test suite, static analysis, style
+enforcement, and CI wired together for the first time.
+
+### Added
+
+- **PHPUnit test suite.** `tests/InstallerTest.php` is now a proper
+  `PHPUnit\Framework\TestCase` (`composer require --dev phpunit/phpunit`,
+  `phpunit.xml`), replacing the hand-rolled runner that manually
+  `require_once`d six files instead of using the Composer autoloader.
+  `composer test` runs it.
+- **Regression tests for the Phase 1 security fixes**: one confirms
+  `Utils::e()` escapes both a stray quote and an HTML tag (C2, XSS);
+  another confirms `Installer::isInstalled()` correctly reflects
+  `createLockFile()`/`deleteLockFile()` (the re-install gap from
+  `feature-gap-analysis.md`).
+- **PHPStan static analysis** at level 2 (`phpstan.neon`, `composer stan`),
+  clean with zero errors. `src/Views/**` is excluded — those templates
+  receive their variables dynamically via `extract($data)` in
+  `StepController::renderView()`, which PHPStan can't see, so it can't
+  meaningfully type-check them.
+- **PHP_CodeSniffer against PSR-12** (`phpcs.xml`, `composer cs` /
+  `composer cs-fix`). `vendor/bin/phpcs src` reports zero errors (91
+  auto-fixed via `phpcbf` — brace placement, trailing whitespace, spacing);
+  45 line-length warnings remain, concentrated in view templates that mix
+  inline HTML and PHP, and are treated as accepted style debt rather than a
+  build blocker.
+- **GitHub Actions CI** (`.github/workflows/ci.yml`): runs on PHP 8.1/8.2/8.3
+  on every push/PR — `composer validate`, `composer install`, `composer test`,
+  PHPStan, and PHPCS (errors only; warnings don't fail the build).
+
+### Fixed
+
+- Removed one genuinely dead `break;` after an `exit;` in
+  `StepController::postStep()`'s `finish` case, found by PHPStan at a
+  higher level than this release settles on.
+
 ## [2.2.0] - 2026-07-29
 
 Correctness fixes across multi-database support, SQL import, and the debug

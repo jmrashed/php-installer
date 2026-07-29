@@ -23,7 +23,7 @@
             <div class="mb-3">
                 <label for="db_driver" class="form-label">Database Type</label>
                 <select class="form-control" id="db_driver" name="db_driver" onchange="toggleDatabaseFields()" required>
-                    <?php foreach ($supported_databases as $key => $db): ?>
+                    <?php foreach ($supported_databases as $key => $db) : ?>
                         <option value="<?php echo \Installer\Core\Utils::e($key)?>" <?php echo ($db_driver ?? 'mysql') === $key ? 'selected' : ''?>>
                             <?php echo \Installer\Core\Utils::e($db['name'])?>
                         </option>

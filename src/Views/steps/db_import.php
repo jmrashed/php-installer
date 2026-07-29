@@ -23,7 +23,7 @@
                 $hasMigrations    = $migrationSupport && is_dir($migrationPath) && count(glob($migrationPath . '/*.php')) > 0;
             ?>
 
-            <?php if ($hasMigrations): ?>
+            <?php if ($hasMigrations) : ?>
             <div class="form-check mb-3">
                 <input class="form-check-input" type="radio" name="import_type" id="useMigrations" value="migrations" checked>
                 <label class="form-check-label" for="useMigrations">
