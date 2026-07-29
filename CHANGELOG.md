@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0] - 2026-07-29
+
+Documentation and open-source-readiness. No code/behavior changes to the
+installer itself except where noted. Closes Phase 4 of the audit checklist
+(`audit/CHECKLIST.md`).
+
+### Added
+
+- `SECURITY.md` — private vulnerability-reporting process and scope.
+- `CONTRIBUTING.md` — contributor workflow (`composer test`/`stan`/`cs`),
+  PSR-12 as the coding standard, linked from the README.
+- `CODE_OF_CONDUCT.md` — Contributor Covenant v2.1.
+- `.github/ISSUE_TEMPLATE/bug_report.md`, `.github/ISSUE_TEMPLATE/feature_request.md`,
+  `.github/PULL_REQUEST_TEMPLATE.md`.
+- `.env.example` documenting `APP_DEBUG`, referenced from the README.
+
+### Changed
+
+- **`config/installer.php.dist` now only contains keys the installer
+  actually reads.** It previously shipped `app_name`, `app_url`, and
+  `installer_lock`, none of which any code path reads (app name/URL come
+  from the session during the `app_config` step; the lock file's presence,
+  not a config flag, is what `Installer::isInstalled()` checks). The
+  template now lists exactly `database_file`, `migration_support`,
+  `migration_path`, `seeder_path`, and `supported_databases` — the same set
+  `SystemChecker`/`StepController` consume — each with a comment explaining
+  what reads it. If you have an existing `config/installer.php` copied from
+  an older `.dist`, it still works as-is; this only changes the template.
+- **README's config examples (Basic Setup, Laravel, Custom PHP Project
+  sections) rewritten to match `config/installer.php.dist` exactly** —
+  previously they documented `version`, `php_version`, `required_extensions`,
+  and `writable_dirs`, none of which the installer reads.
+- **Removed the static `version` field from `composer.json`.** Composer/
+  Packagist derive the installed version from git tags; hand-maintaining a
+  duplicate `version` string is exactly what caused earlier releases'
+  `composer.json`/CHANGELOG/README version numbers to disagree. Going
+  forward, the version lives in git tags and this CHANGELOG only.
+
 ## [2.3.0] - 2026-07-29
 
 Testing and automation infrastructure. No behavioral changes to the

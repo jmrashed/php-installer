@@ -1,7 +1,23 @@
 <?php
 
 return [
-    'app_name' => 'Flat',
-    'app_url' => 'http://localhost:8082/',
-    'installer_lock' => true,
+    // Default SQL schema imported by the "Use default database schema" option.
+    'database_file' => __DIR__ . '/../database/db.sql',
+
+    // Enables the "Run database migrations & seeders" import option.
+    // See database/migrations/README.md for the migration file format.
+    'migration_support' => true,
+    'migration_path' => __DIR__ . '/../database/migrations',
+
+    // Optional: run seeder files (same callable format as migrations) after
+    // migrations complete. Leave unset to skip seeding.
+    'seeder_path' => __DIR__ . '/../database/seeders',
+
+    // Populates the db_config step's dropdown. An entry's 'extension' key is
+    // checked (as optional) by the system_check step.
+    'supported_databases' => [
+        'mysql' => ['name' => 'MySQL', 'extension' => 'pdo_mysql', 'default_port' => '3306'],
+        'pgsql' => ['name' => 'PostgreSQL', 'extension' => 'pdo_pgsql', 'default_port' => '5432'],
+        'sqlite' => ['name' => 'SQLite', 'extension' => 'pdo_sqlite', 'default_port' => null],
+    ],
 ];

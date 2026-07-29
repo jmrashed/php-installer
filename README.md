@@ -76,25 +76,32 @@ wget https://github.com/jmrashed/php-installer/archive/main.zip
 
 ### Basic Setup
 
-Copy `config/installer.php.dist` to `config/installer.php`, then edit it:
+Copy `config/installer.php.dist` to `config/installer.php`, then edit it.
+Every key below is one the installer actually reads — this list is kept in
+sync with `config/installer.php.dist` itself:
 
 ```php
 <?php
 return [
-    'app_name' => 'Your Application',
-    'version' => '1.0.0',
-    'php_version' => '8.1',
-    'required_extensions' => ['pdo_mysql', 'curl', 'mbstring'],
-    'writable_dirs' => ['config', 'storage', 'uploads'],
+    // Default SQL schema imported by the "Use default database schema" option.
     'database_file' => __DIR__ . '/../database/db.sql',
+
+    // Enables the "Run database migrations & seeders" import option.
+    // See database/migrations/README.md for the migration file format.
     'migration_support' => true,
     'migration_path' => __DIR__ . '/../database/migrations',
+
+    // Optional: run seeder files (same callable format as migrations) after
+    // migrations complete. Leave unset to skip seeding.
     'seeder_path' => __DIR__ . '/../database/seeders',
+
+    // Populates the db_config step's dropdown. An entry's 'extension' key is
+    // checked (as optional) by the system_check step.
     'supported_databases' => [
         'mysql' => ['name' => 'MySQL', 'extension' => 'pdo_mysql', 'default_port' => '3306'],
         'pgsql' => ['name' => 'PostgreSQL', 'extension' => 'pdo_pgsql', 'default_port' => '5432'],
-        'sqlite' => ['name' => 'SQLite', 'extension' => 'pdo_sqlite', 'default_port' => null]
-    ]
+        'sqlite' => ['name' => 'SQLite', 'extension' => 'pdo_sqlite', 'default_port' => null],
+    ],
 ];
 ```
 
@@ -175,12 +182,9 @@ php-installer/
 ```php
 // config/installer.php
 return [
-    'app_name' => 'Laravel Application',
-    'required_extensions' => ['pdo_mysql', 'mbstring', 'openssl', 'tokenizer'],
-    'writable_dirs' => ['storage', 'bootstrap/cache'],
     'migration_support' => true,
     'migration_path' => __DIR__ . '/../database/migrations',
-    'seeder_path' => __DIR__ . '/../database/seeders'
+    'seeder_path' => __DIR__ . '/../database/seeders',
 ];
 ```
 
@@ -189,12 +193,10 @@ return [
 ```php
 // config/installer.php
 return [
-    'app_name' => 'Custom PHP App',
-    'required_extensions' => ['pdo_mysql', 'curl', 'gd'],
-    'writable_dirs' => ['uploads', 'cache', 'logs'],
+    'database_file' => __DIR__ . '/../database/db.sql',
     'migration_support' => true,
     'migration_path' => __DIR__ . '/../database/migrations',
-    'seeder_path' => __DIR__ . '/../database/seeders'
+    'seeder_path' => __DIR__ . '/../database/seeders',
 ];
 ```
 
@@ -219,7 +221,7 @@ During the database import step, users can choose:
 
 ### Debug Control
 
-Control debug output using your application's `.env` file:
+Copy `.env.example` to `.env` and control debug output there:
 
 ```env
 # Enable debug output during installation
@@ -288,8 +290,8 @@ every push and pull request — see `.github/workflows/ci.yml`.
   off — there is no URL parameter that can enable it.
 - Once installed, the installer refuses to serve any step until
   `storage/installer.lock` is removed.
-- If you have a security issue to report, please email jmrashed@gmail.com
-  rather than opening a public issue.
+- If you have a security issue to report, see [SECURITY.md](SECURITY.md) —
+  please email jmrashed@gmail.com rather than opening a public issue.
 
 ## 📋 Changelog
 
@@ -297,11 +299,16 @@ See [CHANGELOG.md](CHANGELOG.md) for a detailed list of changes and version hist
 
 ## 🤝 Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow (tests, static
+analysis, coding standard) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for
+community expectations. Short version:
+
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+3. Run `composer test`, `composer stan`, and `composer cs`
+4. Commit your changes (`git commit -m 'Add amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
 
 ## 📝 License
 
