@@ -24,7 +24,8 @@ class SystemChecker
         ];
 
         // Load configuration to get supported databases
-        $config = include Utils::getBasePath('config/installer.php');
+        $configPath = Utils::getBasePath('config/installer.php');
+        $config = file_exists($configPath) ? include $configPath : [];
         $supportedDatabases = $config['supported_databases'] ?? [];
         
         // Define required PHP extensions

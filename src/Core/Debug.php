@@ -19,8 +19,9 @@ class Debug
                     self::$debugEnabled = false;
                 }
             } else {
-                // Fallback: check for debug parameter or constant
-                self::$debugEnabled = isset($_GET['debug']) || defined('INSTALLER_DEBUG');
+                // No .env file found: default closed. Debug output must never be
+                // controllable via an unauthenticated request parameter.
+                self::$debugEnabled = false;
             }
         }
         

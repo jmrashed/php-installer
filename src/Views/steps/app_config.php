@@ -19,11 +19,11 @@
             <input type="hidden" name="csrf_token" value="<?php echo \Installer\Core\Utils::getCsrfToken()?>">
             <div class="mb-3">
                 <label for="app_name" class="form-label">Application Name</label>
-                <input type="text" class="form-control" id="app_name" name="app_name" value="<?php echo $app_name ?? ''?>" required>
+                <input type="text" class="form-control" id="app_name" name="app_name" value="<?php echo \Installer\Core\Utils::e($app_name ?? '')?>" required>
             </div>
             <div class="mb-3">
                 <label for="app_url" class="form-label">Application URL</label>
-                <input type="url" class="form-control" id="app_url" name="app_url" value="<?php echo $app_url ?? ''?>" required>
+                <input type="url" class="form-control" id="app_url" name="app_url" value="<?php echo \Installer\Core\Utils::e($app_url ?? '')?>" required>
             </div>
             <div class="d-flex justify-content-between">
                 <a href="install?step=db_import" class="btn btn-secondary">Previous</a>

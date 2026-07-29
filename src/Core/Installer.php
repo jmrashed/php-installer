@@ -107,23 +107,28 @@ class Installer
     public function handle()
     {
         session_start();
-        
+
         if (!defined('INSTALLER_BASE_PATH')) {
             define('INSTALLER_BASE_PATH', dirname(__DIR__, 2));
+        }
+
+        if ($this->isInstalled()) {
+            http_response_code(403);
+            echo '<h1>Already Installed</h1><p>This application has already been installed. '
+                . 'Delete <code>storage/installer.lock</code> if you need to run the installer again.</p>';
+            return;
         }
 
         Debug::log("Starting installer handle()");
         Debug::log("Current step: " . $this->getCurrentStep());
         Debug::log("Request method: " . $_SERVER['REQUEST_METHOD']);
         Debug::log("Base path: " . INSTALLER_BASE_PATH);
-        Debug::log("GET params: " . print_r($_GET, true));
-        Debug::log("Session data: " . print_r($_SESSION, true));
 
         try {
             Debug::log("Creating StepController");
             $stepController = new \Installer\Controllers\StepController($this);
             Debug::log("StepController created");
-            
+
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Debug::log("Processing POST request");
                 $stepController->postStep();
@@ -132,21 +137,10 @@ class Installer
                 $stepController->showStep();
             }
             Debug::log("Step processing completed");
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             Debug::log("Exception in handle(): " . $e->getMessage());
             Debug::log("File: " . $e->getFile());
             Debug::log("Line: " . $e->getLine());
-        } catch (Error $e) {
-            Debug::log("Fatal error in handle(): " . $e->getMessage());
-            Debug::log("File: " . $e->getFile());
-            Debug::log("Line: " . $e->getLine());
-        }
-    }
-
-    private function debug($message)
-    {
-        if (isset($_GET['debug']) || defined('INSTALLER_DEBUG')) {
-            echo "<div style='background:#f0f0f0;padding:5px;margin:2px;border-left:3px solid #007cba;font-family:monospace;font-size:12px;'>DEBUG: {$message}</div>";
         }
     }
 }

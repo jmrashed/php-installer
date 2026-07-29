@@ -5,6 +5,10 @@
 .DS_Store
 /storage/logs/
 /storage/tmp/
+/storage/installer.lock
+/config/installer.php
 composer.lock
 /installer-test
 task.md
+CHECKLIST.md
+audit

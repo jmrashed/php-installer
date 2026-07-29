@@ -315,13 +315,9 @@ class DatabaseManager
         if ($logFile) {
             @file_put_contents($logFile, date('Y-m-d H:i:s') . ' - ' . $message . PHP_EOL, FILE_APPEND | LOCK_EX);
         }
-        
-        // Always show debug if enabled
-        if (isset($_GET['debug']) || defined('INSTALLER_DEBUG')) {
-            echo "<div style='background:#e8f4fd;padding:3px;margin:1px;border-left:2px solid #0066cc;font-family:monospace;font-size:11px;'>DB: {$message}</div>";
-            flush();
-        }
-        
+
+        Debug::log("DB: {$message}");
+
         // Also try to write to simple log file
         $simpleLog = getcwd() . '/storage/logs/db_import.log';
         @file_put_contents($simpleLog, date('Y-m-d H:i:s') . ' - ' . $message . PHP_EOL, FILE_APPEND);
@@ -399,7 +395,7 @@ class DatabaseManager
             
             $this->log("All migrations completed successfully");
             return true;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             $this->errors[] = "Migration error: " . $e->getMessage();
             $this->log("ERROR: Migration failed - " . $e->getMessage());
             return false;
@@ -444,7 +440,7 @@ class DatabaseManager
             
             $this->log("All seeders completed successfully");
             return true;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             $this->errors[] = "Seeder error: " . $e->getMessage();
             $this->log("ERROR: Seeder failed - " . $e->getMessage());
             return false;

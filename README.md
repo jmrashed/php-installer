@@ -1,7 +1,7 @@
 # PHP Installer Package
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PHP Version](https://img.shields.io/badge/PHP-%3E%3D7.4-blue.svg)](https://php.net/)
+[![PHP Version](https://img.shields.io/badge/PHP-%3E%3D8.1-blue.svg)](https://php.net/)
 [![GitHub release](https://img.shields.io/github/release/jmrashed/php-installer.svg)](https://github.com/jmrashed/php-installer/releases)
 
 A professional, reusable web installer for any PHP application. Simplify your deployment process with an intuitive step-by-step installation wizard.
@@ -38,14 +38,16 @@ wget https://github.com/jmrashed/php-installer/archive/main.zip
 
 1. Copy the `php-installer` folder to your project root
 2. Create your database schema file at `database/db.sql`
-3. Configure installer settings in `config/installer.php`
+3. Copy `config/installer.php.dist` to `config/installer.php` and configure
+   it for your deployment. `config/installer.php` is gitignored so your
+   per-deployment settings never get committed by accident.
 4. Access via browser: `http://yourdomain.com/php-installer/`
 
 ## 📋 Requirements
 
-- PHP 7.4 or higher
-- PDO extension
-- MySQL/MariaDB database
+- PHP 8.1 or higher
+- PDO, mbstring, curl extensions
+- MySQL/MariaDB, PostgreSQL, or SQLite
 - Web server (Apache/Nginx)
 
 ## 🛠️ Configuration
@@ -73,7 +75,7 @@ wget https://github.com/jmrashed/php-installer/archive/main.zip
 
 ### Basic Setup
 
-Edit `config/installer.php`:
+Copy `config/installer.php.dist` to `config/installer.php`, then edit it:
 
 ```php
 <?php
@@ -148,7 +150,8 @@ return function ($pdo) {
 ```
 php-installer/
 ├── config/
-│   └── installer.php          # Configuration settings
+│   ├── installer.php.dist     # Configuration template (committed)
+│   └── installer.php          # Your local config, copied from .dist (gitignored)
 ├── database/
 │   └── db.sql                 # Database schema
 ├── public/
@@ -160,8 +163,8 @@ php-installer/
 │   ├── Assets/                # CSS, JS, images
 │   └── Templates/             # Config templates
 └── storage/
-    ├── logs/                  # Installation logs
-    └── installer.lock         # Installation lock file
+    ├── logs/                  # Installation logs (gitignored)
+    └── installer.lock         # Installation lock file, created at runtime (gitignored)
 ```
 
 ## 🎯 Usage Example
@@ -225,7 +228,10 @@ APP_DEBUG=true
 APP_DEBUG=false
 ```
 
-Alternatively, add `?debug=1` to any installer URL for temporary debugging.
+Debug output defaults to **off** and is controlled exclusively by `APP_DEBUG`
+in `.env`. There is intentionally no URL-parameter way to enable it — debug
+output can include configuration and connection details that must not be
+reachable by an unauthenticated request.
 
 ### Custom Installation Steps
 
@@ -258,6 +264,18 @@ Create custom config templates in `src/Templates/`:
 
 - `config_template.php` - Application configuration
 - `env_template.php` - Environment variables
+
+## 🔒 Security
+
+- All view output is HTML-escaped at render time; database credentials and
+  other user-supplied values are never interpolated into generated PHP files
+  as raw strings (`var_export()` is used instead).
+- Debug output is controlled solely by `APP_DEBUG` in `.env` and defaults to
+  off — there is no URL parameter that can enable it.
+- Once installed, the installer refuses to serve any step until
+  `storage/installer.lock` is removed.
+- If you have a security issue to report, please email jmrashed@gmail.com
+  rather than opening a public issue.
 
 ## 📋 Changelog
 

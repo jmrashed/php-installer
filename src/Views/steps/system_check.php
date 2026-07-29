@@ -18,9 +18,9 @@
         <h4 class="mt-4">PHP Version</h4>
         <ul class="list-group mb-3">
             <li class="list-group-item d-flex justify-content-between align-items-center">
-                PHP Version (Required: <?= $requirements['php_version']['required'] ?>)
+                PHP Version (Required: <?= \Installer\Core\Utils::e($requirements['php_version']['required']) ?>)
                 <span class="badge bg-<?= $requirements['php_version']['status'] ? 'success' : 'danger' ?> rounded-pill">
-                    <?= $requirements['php_version']['current'] ?> (<?= $requirements['php_version']['message'] ?>)
+                    <?= \Installer\Core\Utils::e($requirements['php_version']['current']) ?> (<?= \Installer\Core\Utils::e($requirements['php_version']['message']) ?>)
                 </span>
             </li>
         </ul>
@@ -29,9 +29,9 @@
         <ul class="list-group mb-3">
             <?php foreach ($requirements['extensions'] as $ext): ?>
                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <?= $ext['name'] ?>
+                    <?= \Installer\Core\Utils::e($ext['name']) ?>
                     <span class="badge bg-<?= $ext['status'] ? 'success' : 'danger' ?> rounded-pill">
-                        <?= $ext['message'] ?>
+                        <?= \Installer\Core\Utils::e($ext['message']) ?>
                     </span>
                 </li>
             <?php endforeach; ?>
@@ -41,9 +41,9 @@
         <ul class="list-group mb-3">
             <?php foreach ($requirements['writable_directories'] as $dir): ?>
                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <?= $dir['name'] ?>
+                    <?= \Installer\Core\Utils::e($dir['name']) ?>
                     <span class="badge bg-<?= $dir['status'] ? 'success' : 'danger' ?> rounded-pill">
-                        <?= $dir['message'] ?>
+                        <?= \Installer\Core\Utils::e($dir['message']) ?>
                     </span>
                 </li>
             <?php endforeach; ?>

@@ -5,11 +5,7 @@ CREATE TABLE IF NOT EXISTS `tbl_admin` (
   `admin_user` varchar(50) NOT NULL,
   `admin_password` varchar(50) NOT NULL,
   PRIMARY KEY (`admin_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=4;
-
-INSERT INTO `tbl_admin` (`admin_id`, `admin_name`, `admin_email`, `admin_user`, `admin_password`) VALUES
-(2, 'admin', 'admin@gmail.com', 'xbit_admin', 'bR@mWB'),
-(3, 'shaheen', '', 'shaheen', 'shaheen123');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,

@@ -1,6 +1,6 @@
 {
   "name": "jmrashed/php-installer",
-  "version": "1.2.0",
+  "version": "2.1.0",
   "description": "Reusable, framework-agnostic web installer for PHP applications — step-by-step installation wizard with multi-database support, migrations, and admin creation.",
   "type": "library",
   "keywords": [

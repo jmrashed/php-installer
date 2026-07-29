@@ -16,7 +16,8 @@
         <div class="mb-4">
             <h5>Import Options</h5>
             <?php
-                $config           = include \Installer\Core\Utils::getBasePath('config/installer.php');
+                $configPath       = \Installer\Core\Utils::getBasePath('config/installer.php');
+                $config           = file_exists($configPath) ? include $configPath : [];
                 $migrationSupport = $config['migration_support'] ?? false;
                 $migrationPath    = $config['migration_path'] ?? \Installer\Core\Utils::getBasePath('database/migrations');
                 $hasMigrations    = $migrationSupport && is_dir($migrationPath) && count(glob($migrationPath . '/*.php')) > 0;

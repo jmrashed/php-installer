@@ -24,8 +24,8 @@
                 <label for="db_driver" class="form-label">Database Type</label>
                 <select class="form-control" id="db_driver" name="db_driver" onchange="toggleDatabaseFields()" required>
                     <?php foreach ($supported_databases as $key => $db): ?>
-                        <option value="<?php echo $key?>" <?php echo ($db_driver ?? 'mysql') === $key ? 'selected' : ''?>>
-                            <?php echo $db['name']?>
+                        <option value="<?php echo \Installer\Core\Utils::e($key)?>" <?php echo ($db_driver ?? 'mysql') === $key ? 'selected' : ''?>>
+                            <?php echo \Installer\Core\Utils::e($db['name'])?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -33,26 +33,26 @@
             <div id="server-fields">
                 <div class="mb-3">
                     <label for="db_host" class="form-label">Database Host</label>
-                    <input type="text" class="form-control" id="db_host" name="db_host" value="<?php echo $db_host ?? 'localhost'?>" required>
+                    <input type="text" class="form-control" id="db_host" name="db_host" value="<?php echo \Installer\Core\Utils::e($db_host ?? 'localhost')?>" required>
                 </div>
                 <div class="mb-3">
                     <label for="db_port" class="form-label">Database Port</label>
-                    <input type="number" class="form-control" id="db_port" name="db_port" value="<?php echo $db_port ?? '3306'?>" required>
+                    <input type="number" class="form-control" id="db_port" name="db_port" value="<?php echo \Installer\Core\Utils::e($db_port ?? '3306')?>" required>
                 </div>
             </div>
             <div class="mb-3">
                 <label for="db_name" class="form-label" id="db_name_label">Database Name</label>
-                <input type="text" class="form-control" id="db_name" name="db_name" value="<?php echo $db_name ?? ''?>" required>
+                <input type="text" class="form-control" id="db_name" name="db_name" value="<?php echo \Installer\Core\Utils::e($db_name ?? '')?>" required>
                 <small class="form-text text-muted" id="db_name_help">Enter the database name</small>
             </div>
             <div id="auth-fields">
                 <div class="mb-3">
                     <label for="db_username" class="form-label">Database Username</label>
-                    <input type="text" class="form-control" id="db_username" name="db_username" value="<?php echo $db_username ?? 'root'?>" required>
+                    <input type="text" class="form-control" id="db_username" name="db_username" value="<?php echo \Installer\Core\Utils::e($db_username ?? 'root')?>" required>
                 </div>
                 <div class="mb-3">
                     <label for="db_password" class="form-label">Database Password</label>
-                    <input type="password" class="form-control" id="db_password" name="db_password" value="<?php echo $db_password ?? ''?>">
+                    <input type="password" class="form-control" id="db_password" name="db_password" value="<?php echo \Installer\Core\Utils::e($db_password ?? '')?>">
                 </div>
             </div>
             <div class="d-flex justify-content-between">

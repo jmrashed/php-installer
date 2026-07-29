@@ -19,11 +19,11 @@
             <input type="hidden" name="csrf_token" value="<?php echo \Installer\Core\Utils::getCsrfToken()?>">
             <div class="mb-3">
                 <label for="admin_username" class="form-label">Admin Username</label>
-                <input type="text" class="form-control" id="admin_username" name="admin_username" value="<?php echo $admin_username ?? ''?>" required>
+                <input type="text" class="form-control" id="admin_username" name="admin_username" value="<?php echo \Installer\Core\Utils::e($admin_username ?? '')?>" required>
             </div>
             <div class="mb-3">
                 <label for="admin_email" class="form-label">Admin Email</label>
-                <input type="email" class="form-control" id="admin_email" name="admin_email" value="<?php echo $admin_email ?? ''?>" required>
+                <input type="email" class="form-control" id="admin_email" name="admin_email" value="<?php echo \Installer\Core\Utils::e($admin_email ?? '')?>" required>
             </div>
             <div class="mb-3">
                 <label for="admin_password" class="form-label">Admin Password</label>

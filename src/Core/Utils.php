@@ -33,9 +33,24 @@ class Utils
         exit();
     }
 
+    /**
+     * Normalize raw input (trim whitespace, undo magic-quotes-style escaping).
+     * This does NOT HTML-escape — escaping happens once, at output time, via
+     * self::e(). Escaping here as well would double-encode values that get
+     * redisplayed or written verbatim into generated files (e.g. app_config).
+     */
     public static function sanitizeInput($data)
     {
-        return htmlspecialchars(stripslashes(trim($data)));
+        return trim(stripslashes($data));
+    }
+
+    /**
+     * Escape a value for safe HTML output. Use at every point a value is
+     * echoed into a view — the single point where HTML escaping should happen.
+     */
+    public static function e($value)
+    {
+        return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
     }
 
     public static function generateRandomString($length = 16)

@@ -22,7 +22,7 @@ class StepController
     public function showStep()
     {
         $step = $this->installer->getCurrentStep();
-        $this->debug('Showing step: ' . $step);
+        Debug::log('Showing step: ' . $step);
         $data = [];
 
         // Handle step-specific logic and data loading
@@ -48,7 +48,6 @@ class StepController
                 if (file_exists($configPath)) {
                     Debug::log("Config file exists");
                     $config = include $configPath;
-                    Debug::log("Config loaded: " . print_r($config, true));
                 } else {
                     Debug::log("Config file not found, using defaults");
                     $config = [];
@@ -65,8 +64,6 @@ class StepController
                 $data['db_name'] = $_SESSION['db_name'] ?? '';
                 $data['db_username'] = $_SESSION['db_username'] ?? 'root';
                 $data['db_password'] = $_SESSION['db_password'] ?? '';
-                
-                Debug::log("Data prepared for db_config: " . print_r($data, true));
                 break;
             case 'db_import':
                 // No specific data needed, handled by POST
@@ -99,7 +96,6 @@ class StepController
     {
         $step = $this->installer->getCurrentStep();
         Debug::log("Processing POST for step: $step");
-        Debug::log("POST data: " . print_r($_POST, true));
         $errors = [];
 
         if (!Utils::verifyCsrfToken($_POST['csrf_token'] ?? '')) {
@@ -185,8 +181,8 @@ class StepController
                         return;
                     }
                     Debug::log("Connection test passed");
-                } catch (Exception $e) {
-                    echo "[ERROR] DatabaseManager error: " . $e->getMessage() . "<br>";
+                } catch (\Throwable $e) {
+                    Debug::log("DatabaseManager error: " . $e->getMessage());
                     Utils::setAlert('danger', 'Database error: ' . $e->getMessage());
                     $this->showStep();
                     return;
@@ -205,7 +201,7 @@ class StepController
 
                 Debug::log("Setting next step");
                 $this->installer->setNextStep();
-                echo "[DEBUG] Next step set, current step now: " . $this->installer->getCurrentStep() . "<br>";
+                Debug::log("Next step set, current step now: " . $this->installer->getCurrentStep());
                 break;
             case 'db_import':
                 $dbHost = $_SESSION['db_host'] ?? '';
@@ -233,8 +229,9 @@ class StepController
                 $dbManager = new DatabaseManager($dbHost, $dbPort, $dbName, $dbUsername, $dbPassword, $dbDriver);
                 
                 $importType = $_POST['import_type'] ?? 'default';
-                $config = include Utils::getBasePath('config/installer.php');
-                
+                $configPath = Utils::getBasePath('config/installer.php');
+                $config = file_exists($configPath) ? include $configPath : [];
+
                 if ($importType === 'migrations' && !empty($config['migration_support'])) {
                     Debug::log("Running migrations");
                     $migrationPath = $config['migration_path'] ?? Utils::getBasePath('database/migrations');
@@ -323,17 +320,20 @@ class StepController
                 $_SESSION['app_name'] = $appName;
                 $_SESSION['app_url'] = $appUrl;
 
-                // Create the main application config file
+                // Create the main application config file.
+                // Values are written via var_export() rather than string concatenation
+                // so that no user-supplied value (e.g. a DB password containing a quote)
+                // can break out of the PHP string literal and inject executable code.
                 $configContent = "<?php\n";
                 $configContent .= "// Database Configuration\n";
-                $configContent .= "define('DB_HOST', '" . $_SESSION['db_host'] . "');\n";
-                $configContent .= "define('DB_NAME', '" . $_SESSION['db_name'] . "');\n";
-                $configContent .= "define('DB_USER', '" . $_SESSION['db_username'] . "');\n";
-                $configContent .= "define('DB_PASS', '" . $_SESSION['db_password'] . "');\n\n";
+                $configContent .= "define('DB_HOST', " . var_export($_SESSION['db_host'], true) . ");\n";
+                $configContent .= "define('DB_NAME', " . var_export($_SESSION['db_name'], true) . ");\n";
+                $configContent .= "define('DB_USER', " . var_export($_SESSION['db_username'], true) . ");\n";
+                $configContent .= "define('DB_PASS', " . var_export($_SESSION['db_password'], true) . ");\n\n";
                 $configContent .= "// Application Configuration\n";
-                $configContent .= "define('SITE_NAME', '" . $appName . "');\n";
+                $configContent .= "define('SITE_NAME', " . var_export($appName, true) . ");\n";
                 $configContent .= "define('DEBUG_MODE', false);\n";
-                $configContent .= "define('BASE_URL', '" . $appUrl . "');\n";
+                $configContent .= "define('BASE_URL', " . var_export($appUrl, true) . ");\n";
                 
                 // Get the correct path to the main application's includes directory
                 $basePath = Utils::getBasePath('');
@@ -453,16 +453,16 @@ class StepController
 
     private function renderView($step, $data = [])
     {
-        $this->debug('Rendering view for step: ' . $step);
+        Debug::log('Rendering view for step: ' . $step);
         extract($data); // Extract data to make it available in the view
         $installer = $this->installer; // Make installer object available in views
         $alerts = Utils::getAlerts(); // Get and clear alerts
 
-        $this->debug('Including header.php');
+        Debug::log('Including header.php');
         include Utils::getBasePath('src/Views/layouts/header.php');
-        $this->debug('Including step view: ' . $step . '.php');
+        Debug::log('Including step view: ' . $step . '.php');
         include Utils::getBasePath("src/Views/steps/{$step}.php");
-        $this->debug('Including footer.php');
+        Debug::log('Including footer.php');
         include Utils::getBasePath('src/Views/layouts/footer.php');
     }
 
@@ -528,10 +528,4 @@ class StepController
         }
     }
 
-    private function debug($message)
-    {
-        if (isset($_GET['debug']) || defined('INSTALLER_DEBUG')) {
-            echo "<div style='background:#f0f0f0;padding:5px;margin:2px;border-left:3px solid #007cba;font-family:monospace;font-size:12px;'>DEBUG: {$message}</div>";
-        }
-    }
 }
